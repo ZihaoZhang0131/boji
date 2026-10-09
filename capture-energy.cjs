@@ -5,7 +5,7 @@ const {chromium}=require('playwright-core');
  const workout=async p=>{await p.click('[data-scene="workout"]');await p.click('#copy-workout');await p.fill('#workout-duration','45');for(const id of ['0,0','0,1','0,2'])await p.click(`[data-done="${id}"]`)};
  for(const scene of ['today','meal','workout','review','profile','library','failed','loading','dark','empty','offline']){
   const c=await b.newContext({viewport:{width:1440,height:1020},reducedMotion:'reduce'}),p=await c.newPage();
-  await p.goto('http://127.0.0.1:8765/?v=0.5');await p.evaluate(()=>document.fonts.ready);
+  await p.goto('http://127.0.0.1:8765/?v=0.6');await p.evaluate(()=>document.fonts.ready);
   if(['today','workout','library'].includes(scene)){await profile(p);await workout(p);if(scene!=='workout')await p.click('#finish-workout')}
   if(scene==='meal'){await p.click('[data-ai-demo="ready"]');await p.locator('#adjust-energy').waitFor()}
   if(scene==='failed'){await p.click('[data-ai-demo="failed"]');await p.locator('#meal-energy').getByText('这次没有识别出来').waitFor()}

@@ -9,6 +9,8 @@
   <link rel="stylesheet" href="mono.css">
   <link rel="stylesheet" href="typography.css">
   <link rel="stylesheet" href="energy.css">
+  <link rel="stylesheet" href="pixel-font.css">
+  <link rel="stylesheet" href="pixel.css">
 </head>
 <body>
   <aside class="studio">
@@ -29,11 +31,11 @@
     <div class="state-switches"><button data-ai-demo="ready">识别结果</button><button data-ai-demo="failed">识别失败</button></div>
     <div class="studio-heading minor">外观</div><div class="state-switches"><button data-theme="light" class="selected">浅色</button><button data-theme="dark">深色</button></div>
     <a class="spec-link" href="energy-spec.html" target="_blank">热量功能设计说明</a>
-    <footer>v0.5 · 可交互设计稿<br>AI 为演示，未调用接口；记录保存在本机。</footer>
+    <footer>v0.6 · 黑白像素版<br>AI 为演示，未调用接口；记录保存在本机。</footer>
   </aside>
 
   <main class="stage">
-    <div class="stage-top"><span>薄记</span><span>v0.5</span></div>
+    <div class="stage-top"><span>薄记</span><span>v0.6 / PIXEL EDITION</span></div>
     <div class="phone" id="phone">
       <div class="statusbar" aria-hidden="true"><strong>9:41</strong><span class="island"></span><span class="device-status">▂▄▆ <svg viewBox="0 0 24 14"><path d="M2 4Q12-3 22 4M5 7Q12 2 19 7M9 10Q12 8 15 10" fill="none" stroke="currentColor" stroke-width="2"/><circle cx="12" cy="13" r="1"/></svg><span class="battery"></span></span></div>
       <div id="app" class="app"></div>
@@ -52,5 +54,6 @@
   <script src="app.js"></script>
   <script src="redesign.js"></script>
   <script src="energy.js"></script>
+  <script src="pixel.js"></script>
 </body>
 </html>

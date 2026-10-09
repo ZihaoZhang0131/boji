@@ -1,8 +1,8 @@
 <!doctype html>
-<html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>薄记 · 热量功能 v0.5</title><link rel="stylesheet" href="typography.css"><style>
+<html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>薄记 · 热量功能 v0.6</title><link rel="stylesheet" href="typography.css"><style>
 *{box-sizing:border-box}body{max-width:980px;margin:auto;padding:48px 28px 80px;background:#fff;color:#242424;font-family:var(--playful-font);line-height:1.9}h1{font-size:42px;font-weight:400;margin:0}h2{font-size:25px;font-weight:400;margin:36px 0 14px}h3{font-size:18px;font-weight:400}p,li{font-size:15px}small{font-size:12px;color:#777}a{color:inherit;text-underline-offset:4px}header{padding-bottom:24px;border-bottom:1px solid #ddd}table{width:100%;border-collapse:collapse;font-size:14px}th,td{text-align:left;padding:12px;border-bottom:1px solid #ddd;font-weight:400;vertical-align:top}.note{border-left:2px solid #222;padding:12px 20px;background:#f7f7f5}.scroll-table{overflow:auto}code,pre{font-family:ui-monospace,monospace;font-size:12px}pre{white-space:pre-wrap;overflow-wrap:anywhere;background:#f7f7f5;padding:20px}figure{margin:25px 0}img{width:100%}footer{border-top:1px solid #ddd;padding-top:18px;margin-top:36px}@media(max-width:600px){body{padding:28px 20px}td,th{padding:8px}}
-</style></head><body>
-<header><h1>薄记 · 热量轻轻记</h1><p>v0.5 — 在记录上增加估算，不把生活变成一张分数表。</p><small>黑白简笔画 · 站酷快乐体 × Patrick Hand</small><p><a href="index.html">打开交互原型</a> · <a href="gallery.html">查看界面总览</a> · <a href="design-spec.html">早期记录功能设计</a></p></header>
+</style><link rel="stylesheet" href="pixel-font.css"></head><body>
+<header><h1>薄记 · 热量轻轻记</h1><p>v0.6 — 在记录上增加估算，不把生活变成一张分数表。</p><small>黑白像素 · Fusion Pixel</small><p><a href="index.html">打开交互原型</a> · <a href="gallery.html">查看界面总览</a> · <a href="design-spec.html">早期记录功能设计</a></p></header>
 <div class="note">这是 UI / UX 可交互原型，不是已上线 iOS App。个人信息、公式计算、手动修正、统计与 JSON 导出在浏览器中可用；食物 AI 为明确标注的模拟结果，未调用任何模型接口，不上传图片，也不会收费。iCloud 未连接。</div>
 <h2>01 / 一条轻量的主线</h2>
 <div class="scroll-table"><table><thead><tr><th>界面</th><th>新增能力</th><th>主要动作</th></tr></thead><tbody>
@@ -43,9 +43,9 @@ response: {
 <p>第一张图：实心柱为用户确认记全的摄入；斜线柱为未记全的已知摄入；虚线为当日估算总消耗（静息 + 日常活动增量 + 运动净消耗）。缺数据处断开，不补 0。点日期查看来源与缺口；30 天用日期选择器保留清楚的触控目标。</p>
 <p>第二张图：摄入 − 估算总消耗。只画用户确认记全、所有餐食与训练均有估算且存在个人资料快照的日期。正负分别表示估算盈余／缺口，不使用红绿评价。日均摄入只对记全天取平均，并显示样本天数。未记录的运动不被自动推断为已发生；「已记全」由用户确认。</p>
 <p>原型图表读取本地实际记录；「看完整示例」是独立的只读演示序列，不写入记录、不导出、不影响统计。样例个人信息不会自动填进用户资料。AI 示例可以保存，但每条都带 demo-ai 来源标签。导出沿用完整 JSON，包含热量来源、修正记录、个人资料版本与训练计算快照；分享前应提示其中包含个人身体信息。</p>
-<h2>06 / 交付与验证</h2>
-<p>保留 v0.4 的黑白简笔画、卡通字体、原始照片显示方式和饮食／训练主流程。没有增加社交、订阅或 AI 聊天页。浏览器验证范围：个人信息计算与持久化、输入校验、手动热量修正、识别中／失败状态、训练消耗计算、复制清除旧时长、历史快照、统计完整度、7 / 30 天和 320 / 393px 排版、原有记录与导出流程。</p>
+<h2>06 / 交付与验证</h2><p>像素视觉借鉴《星露谷物语》的物品栏与边框语言，全部插画和图标均为原创 SVG，不使用游戏素材。字体来源：<a href="https://github.com/TakWolf/fusion-pixel-font">Fusion Pixel 官方项目</a>，随包附带 SIL OFL 1.1 许可。</p>
+<p>更新为黑白像素视觉：全套 Fusion Pixel 字体、原创像素图标、硬边框与方角图表；保留原始照片显示方式和饮食／训练主流程。没有增加社交、订阅或 AI 聊天页。浏览器验证范围：个人信息计算与持久化、输入校验、手动热量修正、识别中／失败状态、训练消耗计算、复制清除旧时长、历史快照、统计完整度、7 / 30 天和 320 / 393px 排版、原有记录与导出流程。</p>
 <p>尚未验证：真实供应商接口、真实识别精度、原生相机与键盘、VoiceOver、Dynamic Type、iCloud 和跨设备同步。正式上线前还需隐私政策、用户授权及健康信息相关审核。</p>
 <figure><img src="energy-overview.png" alt="薄记热量功能：记录、食物识别、训练消耗、热量回顾、个人信息"><figcaption><small>示例资料与模拟识别结果，不是用户真实健康数据。</small></figcaption></figure>
-<footer><small>薄记 v0.5 · UI / UX 设计原型 · 字体许可证随 assets 附带。</small></footer>
+<footer><small>薄记 v0.6 · UI / UX 设计原型 · 字体许可证随 assets 附带。</small></footer>
 </body></html>

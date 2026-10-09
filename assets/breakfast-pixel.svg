@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48" shape-rendering="crispEdges">
+<title>原创像素早餐</title>
+<path fill="#191919" d="M7 27h34v3h3v7h-3v3H7v-3H4v-7h3z"/>
+<path fill="#fff" d="M8 29h32v2h2v5h-3v2H9v-2H6v-5h2z"/>
+<path fill="#d6d6d6" d="M10 35h28v2H10z"/>
+<path fill="#191919" d="M23 10h14v2h3v5h-2v14H22V17h-2v-5h3z"/>
+<path fill="#bdbdbd" d="M24 12h12v2h2v3h-2v12H24V17h-2v-3h2z"/>
+<path fill="#fff" d="M26 15h8v11h-8z"/>
+<path fill="#737373" d="M27 16h2v2h-2zM31 19h2v2h-2zM27 23h2v2h-2z"/>
+<path fill="#191919" d="M10 18h9v2h3v3h2v7h-2v3H9v-2H6v-7h2v-3h2z"/>
+<path fill="#fff" d="M11 20h7v2h3v3h1v4h-2v2H10v-2H8v-4h2v-3h1z"/>
+<path fill="#737373" d="M13 24h5v5h-5z"/>
+<path fill="#bdbdbd" d="M14 24h3v2h-3z"/>
+<path fill="#d6d6d6" d="M11 43h26v1H11z"/>
+</svg>

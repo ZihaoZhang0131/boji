@@ -2,7 +2,7 @@
 
 轻一点，记久一点。
 
-饮食与训练记录应用的可交互 UI / UX 原型，当前版本 **v0.5**。采用黑白简笔画、站酷快乐体与 Patrick Hand 字体。
+饮食与训练记录应用的可交互 UI / UX 原型，当前版本 **v0.6**。采用黑白像素风与 Fusion Pixel 字体；中文、小字、英文和数字统一像素化。
 
 ![薄记界面总览](energy-overview.png)
 
@@ -30,10 +30,11 @@ python3 -m http.server 8765 --bind 127.0.0.1
 
 - `index.html`：可交互原型。
 - `gallery.html`：主要界面总览。
-- `energy-spec.html`：v0.5 热量功能、计算口径、AI 接口约定与产品边界。
+- `energy-spec.html`：热量功能、计算口径、AI 接口约定、v0.6 视觉与产品边界。
 - `design-spec.html`：早期记录功能设计。
 - `app.js` / `redesign.js` / `energy.js`：基础交互、简化视觉层和热量功能层。
 - `style.css` / `mono.css` / `typography.css` / `energy.css`：样式与字体。
+- `pixel-font.css` / `pixel.css` / `pixel.js`：v0.6 像素字体、视觉层、原创像素图标与示例插画的展示替换。
 - `assets/`：字体、许可证、示例照片和 SVG 插画。
 
 ## 浏览器验证
@@ -57,8 +58,19 @@ npm test
 
 ## 素材许可
 
+- 当前字体 Fusion Pixel：来自作者官方站点，采用 SIL Open Font License 1.1。许可见 `assets/OFL-Fusion-Pixel.txt`；来源 <https://github.com/TakWolf/fusion-pixel-font>。
 - ZCOOL KuaiLe / 站酷快乐体：`assets/OFL-ZCOOL-KuaiLe.txt`。
 - Patrick Hand：`assets/OFL-Patrick-Hand.txt`。
-- 字体文件来自 Google Fonts 官方仓库，以 SIL Open Font License 1.1 分发。
-- 两张早期 Unsplash 照片保留作为示例／上传测试素材，默认界面使用项目绘制的 SVG 简笔画。来源见 `design-spec.html`。
+- 上述两种早期字体文件来自 Google Fonts 官方仓库，以 SIL Open Font License 1.1 分发。
+- 两张早期 Unsplash 照片保留作为示例／上传测试素材，默认界面使用项目绘制的像素 SVG。来源见 `design-spec.html`。早期手绘字体与插画保留作历史设计资源，不用于当前 App 界面。
 - 未为项目代码另行授予开源许可证；第三方素材仍遵循各自许可。
+
+## v0.6 设计约定
+
+- 目标：保留饮食、训练、热量估算的全部交互，改为克制的黑白像素手账。借鉴《星露谷物语》的物品栏和像素框，不使用游戏的角色、贴图、标志或界面素材。
+- 结构：记录、回顾、我的三项导航不变；既有 Sheet 与统计口径不变；手机端固定记录入口，窄屏滚动展示长表单。
+- 字体：Fusion Pixel 12px 简体中文版，中文和 Latin 使用同一字体。正文、小字与控件优先 12px，标题 24/36px，品牌 36/48px；密集数值少量 18px。真实设备放大与 Dynamic Type 待原生验证。
+- 材质：黑白与中性灰；2px 主边框、1px 信息分隔、无模糊的 3px 硬阴影、方形选中点。留白建立层级，不铺满像素纹理。
+- 图像：原创 16×16 像素图标和 48×48 餐食示例；用户上传的照片仍显示原图。纯展示层映射不改照片 URL 或持久化数据。
+- 图表：柱形和数据点方角化；数值、缺失处理与交互仍使用原逻辑，像素风不改变数据。
+- 验收：旧录入流程、新热量流程、字体加载、真实照片保护、320/393px、浅色/深色、空白/离线/识别失败均能运行并完成视觉核验。
