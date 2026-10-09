@@ -1,0 +1,16 @@
+.DS_Store
+node_modules/
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+*.p12
+*.mobileprovision
+*.log
+test-results/
+playwright-report/
+downloads/
+exports/
+*-原型资料.json
+*.zip

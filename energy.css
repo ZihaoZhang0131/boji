@@ -1,0 +1,110 @@
+/* v0.5 — small annotations, generous numbers, no dashboard-card wall. */
+.energy-caption,.energy-meta,.energy-help {color:var(--muted);font-size:12px;line-height:1.8}
+.energy-help {margin:12px 0 0}
+.energy-badge {font-size:11px;border:1px solid var(--line);border-radius:3px;padding:3px 6px;white-space:nowrap}
+.energy-summary {display:grid;grid-template-columns:1fr 1fr;gap:22px;padding:0 0 22px;margin-bottom:24px;border-bottom:1px solid var(--line)}
+.energy-summary button {text-align:left;min-height:60px}
+.energy-summary small {display:block;font-size:12px;color:var(--muted);margin-bottom:4px}
+.energy-number {font-family:var(--playful-font);font-size:36px;font-weight:400;line-height:1.2;white-space:nowrap}
+.energy-number i {font-style:normal;font-size:12px;color:var(--muted);margin-left:5px}
+.meal-kcal {display:flex;align-items:baseline;gap:7px;margin-top:7px;flex-wrap:wrap}
+.meal-kcal b {font-size:21px;font-weight:400}
+.meal-kcal small {font-size:11px;color:var(--muted)}
+.training-preview .meal-kcal {margin-top:6px}
+.food-info {min-width:0}
+.energy-section {border-top:1px solid var(--line);padding:18px 0;margin-top:18px}
+.energy-section h3,.energy-panel h3 {font-size:17px;font-weight:400;margin:0}
+.energy-line {display:flex;justify-content:space-between;gap:12px;align-items:center}
+.energy-line > div {min-width:0}
+.energy-panel {padding:17px 0;border-top:1px solid var(--line);border-bottom:1px solid var(--line);margin:16px 0 0}
+.energy-panel .energy-number {margin:8px 0;display:block}
+.energy-panel .text-button {color:var(--ink);text-decoration:underline;text-underline-offset:4px;min-height:44px}
+.energy-panel .secondary {font-size:13px;min-height:44px;padding:0 14px;margin-top:12px}
+.energy-panel .energy-help {margin-top:6px}
+.energy-pending {display:inline-block;width:12px;height:12px;border:1px dashed currentColor;border-radius:50%;margin-right:6px;animation:energy-turn 3s linear infinite}
+@keyframes energy-turn {to{transform:rotate(360deg)}}
+.energy-actions {display:flex;gap:16px;flex-wrap:wrap;align-items:center}
+.energy-actions button {min-height:44px;font-size:13px;text-decoration:underline;text-underline-offset:4px}
+.meal-sketch {display:none}
+.sheet-body:has(.photo-thumb) .media-row {margin-bottom:12px;gap:12px}
+.sheet-body:has(.photo-thumb) .photo-add {min-height:44px;flex-direction:row;gap:8px}
+.sheet-body:has(.photo-thumb) .photo-add svg {width:20px;height:20px}
+.sheet-body:has(.photo-thumb) .photo-add span,
+.sheet-body:has(.photo-thumb) .photo-options #album {font-size:13px}
+.sheet-body:has(.photo-thumb) #meal-note {min-height:76px;height:76px}
+.sheet-body:has(.photo-thumb) .photo-thumbs {margin-bottom:12px}
+.energy-items {margin:12px 0 4px}
+.energy-item {display:grid;grid-template-columns:1fr 62px 64px;gap:10px;align-items:center;min-height:43px;border-bottom:1px solid var(--line);font-size:13px}
+.energy-item :last-child {text-align:right}
+.energy-item small {font-size:12px;color:var(--muted)}
+.energy-item input {width:100%;font-size:18px;text-align:center;padding:5px;min-height:40px}
+.energy-item .energy-item-name {font-size:13px;text-align:left}
+.energy-item-head {font-size:11px;color:var(--muted);border:0;min-height:30px}
+.energy-estimate-note {font-size:12px;color:var(--muted);line-height:1.7;margin-top:12px}
+.energy-form-grid {display:grid;grid-template-columns:1fr 1fr;gap:4px 18px}
+.energy-form-grid label,.energy-field label {display:block;font-size:12px;color:var(--muted);margin:14px 0 7px}
+.energy-form-grid input,.energy-form-grid select,.energy-field input,.energy-field select {width:100%;background:var(--bg);border:1px solid var(--line);min-width:0}
+.energy-form-grid input,.energy-field input {font-size:22px}
+.energy-form-grid select,.energy-field select {font-size:13px;padding:8px}
+.profile-result {padding:22px 0;margin:22px 0 4px;border-top:1px solid var(--ink);border-bottom:1px solid var(--line)}
+.profile-result .energy-number {font-size:42px;display:block;margin:8px 0 12px}
+.profile-result .energy-line {font-size:13px;margin:10px 0}
+.profile-result .energy-line b {font-size:22px;font-weight:400}
+.profile-top {display:flex;justify-content:space-between;align-items:center;font-size:12px;color:var(--muted)}
+.profile-top button {min-height:44px;text-decoration:underline;text-underline-offset:4px}
+.workout-energy {margin:0 0 22px;padding:0 0 17px;border-bottom:1px solid var(--line)}
+.workout-energy .energy-form-grid {margin-top:6px}
+.workout-energy .energy-number {font-size:32px}
+.workout-energy input {font-size:21px;height:44px}
+.workout-energy .energy-help {margin-top:8px;font-size:11px}
+.workout-sub {margin-bottom:18px}
+.review-tabs {gap:0;justify-content:space-between}
+.review-tabs button {font-size:15px;padding:0 3px}
+.energy-period {display:flex;justify-content:space-between;gap:10px;align-items:center;margin:2px 0 20px}
+.energy-period > span {font-size:15px}
+.energy-toggle {display:flex;gap:9px}
+.energy-toggle button {font-size:13px;min-height:36px;padding:0 5px;color:var(--muted);border-bottom:1px solid transparent}
+.energy-toggle button.active {color:var(--ink);border-color:var(--ink)}
+.energy-review-top {display:grid;grid-template-columns:1fr 1fr;gap:18px;margin-bottom:24px}
+.energy-review-top small {font-size:12px;color:var(--muted);display:block;margin-bottom:5px}
+.energy-review-top .energy-number {font-size:34px}
+.chart-heading {display:flex;justify-content:space-between;align-items:baseline;margin:18px 0 10px;font-size:16px}
+.chart-heading small {color:var(--muted);font-size:11px}
+.chart-legend {display:flex;gap:17px;align-items:center;color:var(--muted);font-size:11px;margin-bottom:11px}
+.chart-legend span {display:flex;align-items:center;gap:6px}
+.legend-fill {width:8px;height:8px;background:var(--ink);display:inline-block}
+.legend-dash {width:18px;border-top:1.5px dashed var(--ink);display:inline-block}
+.energy-chart {display:block;width:100%;height:auto;overflow:visible}
+.energy-chart text {font-family:var(--playful-font);font-size:12px;fill:var(--muted)}
+.energy-chart .chart-value {fill:var(--ink);font-size:14px}
+.energy-chart line,.energy-chart path,.energy-chart rect {vector-effect:non-scaling-stroke}
+.chart-day-buttons {display:grid;gap:0;margin-left:31px;margin-top:-4px}
+.chart-day-buttons button {min-height:36px;font-size:14px;padding:0;color:var(--muted)}
+.chart-day-buttons button.active {color:var(--ink);text-decoration:underline;text-underline-offset:5px}
+.chart-selected {padding:14px 0;border-top:1px solid var(--line);border-bottom:1px solid var(--line);margin:14px 0 18px}
+.chart-selected .energy-line {font-size:13px}
+.chart-selected p {font-size:12px;color:var(--muted);margin-top:7px;line-height:1.7}
+.chart-selected strong {font-weight:400;font-size:19px}
+.energy-sample-row {display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid var(--line);padding-bottom:12px;margin-bottom:17px;font-size:12px;color:var(--muted)}
+.energy-sample-row button {min-height:36px;text-decoration:underline;text-underline-offset:4px}
+.energy-breakdown {margin:18px 0}
+.energy-breakdown .energy-line {font-size:12px;min-height:35px}
+.energy-breakdown b {font-size:19px;font-weight:400}
+.energy-breakdown .total {border-top:1px solid var(--line);padding-top:8px;margin-top:8px}
+.energy-integration {font-size:13px;line-height:1.9;color:var(--muted)}
+.energy-integration strong {font-weight:400;color:var(--ink)}
+.energy-integration li {margin:10px 0}
+.energy-consent {display:flex;align-items:flex-start;gap:10px;margin-top:20px;font-size:12px;line-height:1.8}
+.energy-consent input {min-height:22px;width:18px;flex-shrink:0}
+.energy-compact-summary {margin-bottom:17px;border-bottom:1px solid var(--line);padding-bottom:15px}
+.energy-compact-summary .energy-line {font-size:13px}
+.energy-error {font-size:12px;line-height:1.8;border-left:2px solid var(--ink);padding-left:10px;margin-top:10px}
+.energy-accessible-table {font-size:12px;width:100%;border-collapse:collapse;margin-top:12px}
+.energy-accessible-table th,.energy-accessible-table td {text-align:right;padding:8px 3px;border-bottom:1px solid var(--line);font-weight:400}
+.energy-accessible-table th:first-child,.energy-accessible-table td:first-child {text-align:left}
+.energy-table-details summary {min-height:44px;font-size:12px;color:var(--muted);padding-top:14px;cursor:pointer}
+@media(max-width:360px) {
+ .energy-number{font-size:32px}.energy-summary{gap:12px}.energy-form-grid{gap:4px 12px}
+ .energy-item{grid-template-columns:1fr 54px 59px;gap:8px}.energy-chart text{font-size:12px}
+ .chart-legend{gap:11px}.energy-period > span{font-size:13px}
+}

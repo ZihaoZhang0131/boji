@@ -1,0 +1,13 @@
+{
+  "name": "boji",
+  "version": "0.5.0",
+  "private": true,
+  "description": "薄记：饮食、训练与热量记录的黑白手绘交互原型",
+  "scripts": {
+    "test": "node verify.cjs && node verify-energy.cjs",
+    "capture": "node capture-energy.cjs"
+  },
+  "devDependencies": {
+    "playwright-core": "1.58.1"
+  }
+}

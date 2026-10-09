@@ -1,0 +1,96 @@
+@font-face {
+  font-family: "ZCOOL KuaiLe";
+  src: url("assets/ZCOOLKuaiLe-Regular.ttf") format("truetype");
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: "Patrick Hand";
+  src: url("assets/PatrickHand-Regular.ttf") format("truetype");
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+:root {
+  --playful-font: "Patrick Hand", "ZCOOL KuaiLe", "Wawati SC", "Yuanti SC", sans-serif;
+  font-family: var(--playful-font);
+  font-synthesis: none;
+}
+body, button, input, textarea, select {
+  font-family: var(--playful-font);
+  font-weight: 400;
+}
+.brand,
+.annotation h1,
+.page-head h2,
+.page-head:has([data-jump-calendar]) h2,
+.sheet-head h2,
+.workout-title,
+.exercise h3,
+.food-info h3,
+.training-preview h3,
+.empty-state h3,
+.plan-row b,
+.library-signature > span,
+.summary-box h3,
+.plan-choice,
+.primary,
+.secondary,
+.tabbar button,
+.tabbar button.active,
+.review-tabs button,
+.review-tabs button.active,
+.photo-add span,
+.photo-options #album,
+.setting-row b,
+.scenes button,
+.scenes button.active,
+body > header h1 {
+  font-family: var(--playful-font);
+  font-weight: 400;
+  font-synthesis: none;
+}
+.brand { font-size: 49px; letter-spacing: 3px; }
+.page-head:has([data-jump-calendar]) h2 { font-size: 40px; letter-spacing: 3px; }
+.page-head h2 { font-size: 30px; }
+.annotation h1 { font-size: 33px; line-height: 1.65; letter-spacing: 1px; }
+.sheet-head h2 { font-size: 19px; }
+.food-info h3 { font-size: 16px; }
+.compact h3 { font-size: 14px; }
+.exercise h3 { font-size: 17px; }
+.primary, .secondary { font-size: 16px; }
+.tabbar button { font-size: 15px; }
+.review-tabs button { font-size: 15px; }
+.setting-row b { font-size: 16px; }
+.photo-add span, .photo-options #album { font-size: 16px; }
+.library-signature > span { font-size: 31px; }
+.plan-row b { font-size: 28px; }
+.workout-title { font-size: 28px; }
+.set-table input, .calendar button, .date-line, .entry-heading time,
+.statusbar, .week-head b, .training-totals b, .stat b {
+  font-family: var(--playful-font);
+  font-variant-numeric: tabular-nums;
+}
+/* Small handwritten labels need more room than their former system-font sizes. */
+.date-line, .date-line span, .entry-heading time, .compact p,
+.completeness, .workout-sub, .workout-progress, .exercise .unit-note,
+.set-table th, .setting-row small, .sync-state, .plan-row small,
+.library-signature p, .calendar .weekday, .day-divider small,
+.photo-grid .photo-label, .training-totals span, .workout-status.done,
+.cloud-note .helper, .danger-button, .offline-banner, .continue-row > span:last-child {
+  font-size: 12px;
+}
+.food-info p, .compact p, .helper { line-height: 1.85; }
+.entry-heading time { font-size: 14px; letter-spacing: .6px; }
+.set-table td { font-size: 16px; }
+.set-table input { font-size: 22px; line-height: 1.2; }
+.calendar button { font-size: 18px; }
+.week-head b { font-size: 29px; }
+.training-totals b, .stat b { font-size: 32px; }
+.statusbar { font-size: 16px; font-weight: 400; }
+textarea::placeholder, input::placeholder { font-family: var(--playful-font); }
+@media (max-width: 360px) {
+  .compact h3 { font-size: 13px; }
+  .workout-title { font-size: 26px; }
+}
