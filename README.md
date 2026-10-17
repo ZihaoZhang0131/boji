@@ -65,6 +65,12 @@ npm test
 - 两张早期 Unsplash 照片保留作为示例／上传测试素材，默认界面使用项目绘制的像素 SVG。来源见 `design-spec.html`。早期手绘字体与插画保留作历史设计资源，不用于当前 App 界面。
 - 未为项目代码另行授予开源许可证；第三方素材仍遵循各自许可。
 
+## 真实状态样例来源
+
+- 餐食照片来自 Unsplash：[Olya P](https://unsplash.com/photos/fried-egg-with-avocado-toast-breakfast-orMrxgkA4EA)、[joe boshra](https://unsplash.com/photos/healthy-chicken-and-rice-bowl-with-fresh-vegetables-tB2MPTiSrsg)、[sunorwind](https://unsplash.com/photos/salmon-sashimi-bowl-with-rice-and-garnishes-cwqI5PcUsqQ)、[Matilda Jarl](https://unsplash.com/photos/a-bowl-of-granola-with-yogurt-and-blueberries-9Uphjae3YnU)、[Mantra Media](https://unsplash.com/photos/steak-with-vegetables-on-plate-XPvhzVIeETM)、[You Le](https://unsplash.com/photos/a-bowl-of-delicious-laksa-soup-with-noodles-and-shrimp-2h-BQpdUmYo) 与 [Thanti Riess](https://unsplash.com/photos/meat-and-vegetables-YPMdhn9gEp0)。
+- 默认状态包含 2026-10-03 至 2026-10-09 的 21 条饮食、3 次训练和一份个人资料，用于观察完整一周的首页、回顾、照片墙与热量趋势。
+- 餐食文字、份量、热量、训练组数与个人资料均为虚构样例，不代表照片作者或当前用户；照片无法证明实际份量，热量仍是原型中的演示估算。
+
 ## v0.6 设计约定
 
 - 目标：保留饮食、训练、热量估算的全部交互，改为克制的黑白像素手账。借鉴《星露谷物语》的物品栏和像素框，不使用游戏的角色、贴图、标志或界面素材。

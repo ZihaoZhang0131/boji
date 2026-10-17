@@ -20,7 +20,7 @@ function estimateMeal(kcal,items=[]) {
   return {status:'ready',source:'demo-ai',kcal,items:structuredClone(items),low:Math.round(kcal*.8),high:Math.round(kcal*1.2),model:'演示数据 · 非模型推理',version:energyVersion};
 }
 // Only annotate untouched, recognisable fixture records; never infer user photos.
-const fixtureEnergy={m1:['一碗清爽的蔬菜沙拉',420,sampleFoods],m2:['鸡蛋、牛油果和吐司',385,[{name:'鸡蛋',grams:50,kcal:75},{name:'牛油果',grams:70,kcal:112},{name:'吐司',grams:75,kcal:198}]],m3:['蔬菜沙拉',560,[]],m4:['水果麦片',360,[]]};
+const fixtureEnergy=Object.fromEntries(Object.entries(demoMealEnergy).map(([id,m])=>[id,[m.title,m.kcal,[]]]));
 for(const m of state.meals) {
   const f=fixtureEnergy[m.id];
   if(f && m.title===f[0] && m.photos.every(p=>p.startsWith('assets/')) && !m.energy) {

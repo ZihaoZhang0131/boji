@@ -1,16 +1,17 @@
 const {chromium}=require('playwright-core');
 const assert=require('node:assert/strict');
 (async()=>{
+ const base=process.env.BASE_URL||'http://127.0.0.1:8765';
  const browser=await chromium.launch({headless:true,channel:'chrome'});
  const errors=[];
  for(const width of [393,320]){
   const context=await browser.newContext({viewport:{width,height:852},reducedMotion:'reduce'});
   const p=await context.newPage();p.on('pageerror',e=>errors.push(e.message));
-  await p.goto('http://127.0.0.1:8765/?v=0.6');await p.evaluate(()=>document.fonts.ready);
+  await p.goto(`${base}/?v=0.6`);await p.evaluate(()=>document.fonts.ready);
   const fonts=await p.evaluate(()=>({loaded:document.fonts.check('12px "Fusion Pixel"','薄记饮食训练0123456789'),families:['h2','.food-info p','.energy-number','.primary'].map(s=>getComputedStyle(document.querySelector(s)).fontFamily)}));
   assert(fonts.loaded);assert(fonts.families.every(f=>f.includes('Fusion Pixel')));
-  assert(await p.locator('.food-img.pixel-art').count());
-  assert.equal(await p.evaluate(()=>state.meals[0].photos[0]),'assets/bowl-line.svg');
+  assert.equal(await p.locator('.food-img.pixel-art').count(),0);
+  assert.equal(await p.evaluate(()=>state.meals[0].photos[0]),'assets/meal-yogurt-real.jpg');
   assert.equal(await p.locator('.tabbar .pixel-icon').count(),3);
   const fits=()=>p.evaluate(()=>{const e=document.querySelector('.sheet-body')||document.querySelector('#app .scroll');return document.documentElement.scrollWidth<=innerWidth&&e.scrollWidth<=e.clientWidth});
   assert(await fits());await p.screenshot({path:`pixel-today-${width}.png`});
