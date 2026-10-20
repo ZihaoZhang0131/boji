@@ -1,0 +1,19 @@
+[
+  {
+    "createdAt" : 1792238400,
+    "effectiveDay" : {
+      "day" : 17,
+      "month" : 10,
+      "year" : 2026
+    },
+    "id" : "8DC4485D-DD3B-4C9C-A89C-A96FACF1CCC6",
+    "profile" : {
+      "activityFactor" : 1.2,
+      "age" : 28,
+      "heightCM" : 175,
+      "sex" : "male",
+      "weightKG" : 70
+    },
+    "sequence" : 1
+  }
+]

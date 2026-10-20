@@ -1,0 +1,51 @@
+[
+  {
+    "createdAt" : 1792238400,
+    "id" : "8035DBFE-6C37-4019-99CD-21E3AC4DC697",
+    "inputRevision" : 0,
+    "items" : [
+      {
+        "assumptions" : [
+
+        ],
+        "grams" : 100,
+        "id" : "833F0404-BA79-4779-A677-A8C4FD7BFBD0",
+        "kcal" : 200,
+        "name" : "fixture",
+        "referenceGrams" : 100,
+        "referenceKcal" : 200
+      }
+    ],
+    "questions" : [
+
+    ],
+    "recordID" : "99C88F5E-B576-4EA3-BEB8-9077E8F57A38",
+    "source" : "manual",
+    "totalKcal" : 200
+  },
+  {
+    "createdAt" : 1792238400,
+    "id" : "E8A0D0ED-02B4-4CBD-90E6-13F18E005958",
+    "inputRevision" : 0,
+    "items" : [
+      {
+        "assumptions" : [
+
+        ],
+        "grams" : 150,
+        "id" : "833F0404-BA79-4779-A677-A8C4FD7BFBD0",
+        "kcal" : 300,
+        "name" : "fixture",
+        "referenceGrams" : 100,
+        "referenceKcal" : 200
+      }
+    ],
+    "previousRevisionID" : "8035DBFE-6C37-4019-99CD-21E3AC4DC697",
+    "questions" : [
+
+    ],
+    "recordID" : "99C88F5E-B576-4EA3-BEB8-9077E8F57A38",
+    "source" : "manual",
+    "totalKcal" : 300
+  }
+]

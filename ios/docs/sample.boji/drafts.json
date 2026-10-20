@@ -1,0 +1,34 @@
+[
+  {
+    "id" : "8C92887A-A2F5-4EC6-A215-B1078EB02B93",
+    "kind" : "meal",
+    "meal" : {
+      "factsRevision" : 0,
+      "id" : "8C1A982B-334F-4492-A2FE-C5E186518BE1",
+      "inputRevision" : 0,
+      "isDemo" : false,
+      "lifecycleEpoch" : 0,
+      "manualRevision" : 0,
+      "note" : "Synthetic draft",
+      "photoIDs" : [
+        "79E2516F-DEFC-44AC-9C3D-F7AE3B168918"
+      ],
+      "tags" : [
+
+      ],
+      "time" : {
+        "hour" : 20,
+        "instant" : 1792238400,
+        "localDay" : {
+          "day" : 17,
+          "month" : 10,
+          "year" : 2026
+        },
+        "minute" : 0,
+        "timeZoneIdentifier" : "Asia/Shanghai"
+      }
+    },
+    "revision" : 0,
+    "savedAt" : 1792238400
+  }
+]

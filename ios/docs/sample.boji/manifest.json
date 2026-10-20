@@ -1,0 +1,75 @@
+{
+  "counts" : {
+    "confirmations" : 1,
+    "drafts" : 1,
+    "estimates" : 2,
+    "goals" : 1,
+    "meals" : 1,
+    "photos" : 1,
+    "profiles" : 1,
+    "tombstones" : 0,
+    "trash_meals" : 1,
+    "trash_workouts" : 0,
+    "workouts" : 1
+  },
+  "created_at" : 1792238634.270352,
+  "dataset_id" : "3804B0F5-C109-4D1C-B542-C45AA9A5DBFA",
+  "export_id" : "D3F5A53B-5C6D-4E3C-BC62-4860CA521177",
+  "files" : [
+    {
+      "byte_count" : 2828,
+      "path" : "README.md",
+      "sha256" : "abe49197f444617b05385d85682cd6ee6655e055d1059ccdd805885c261761ab"
+    },
+    {
+      "byte_count" : 1263,
+      "path" : "agent-prompt.txt",
+      "sha256" : "c323926e7432be79f0bde73f2032c8023131da2ed6cf72780be672feaa0a9a8b"
+    },
+    {
+      "byte_count" : 728,
+      "path" : "drafts.json",
+      "sha256" : "d958a80f4651a6b23ceeee3c8723f31b90fd51bf0e81fca7e1a062eb34e58a26"
+    },
+    {
+      "byte_count" : 1097,
+      "path" : "estimates.json",
+      "sha256" : "ae429c006cf77536d4bd054d855d70063db6734da3c6b3f8f26562949cd8225e"
+    },
+    {
+      "byte_count" : 207,
+      "path" : "goals.json",
+      "sha256" : "f658c43decfa1eba9f78b10ca2dc564a55480a260050a093baa3ff77d2027bd1"
+    },
+    {
+      "byte_count" : 781,
+      "path" : "media/9fb070980df4c380ee763e1f4068af36db1b209dc9ed231259fbfd1db9084bd1.jpg",
+      "sha256" : "9fb070980df4c380ee763e1f4068af36db1b209dc9ed231259fbfd1db9084bd1"
+    },
+    {
+      "byte_count" : 340,
+      "path" : "profiles.json",
+      "sha256" : "c97baf288e98c9414ed2a9dd5eefa47260a2fa8a44aeaa9d4626ee0fd9f9feae"
+    },
+    {
+      "byte_count" : 3358,
+      "path" : "records.json",
+      "sha256" : "16c7025abc8bb22bc60f9c7584fe9d2f79b8aec3ed050c3a1f8f68fc9c3df81c"
+    },
+    {
+      "byte_count" : 689,
+      "path" : "trash.json",
+      "sha256" : "079b3b43d695f53804ab7a88f879774536660abc2e46bf4578ed6560ddcc788c"
+    }
+  ],
+  "revision" : 1,
+  "schema_version" : 2,
+  "time_convention" : "Date values: Unix seconds UTC; record localDay/hour/minute and IANA timeZoneIdentifier preserve recording calendar.",
+  "units" : {
+    "duration" : "minute",
+    "energy" : "kcal",
+    "food_mass" : "g",
+    "height" : "cm",
+    "mass" : "kg"
+  }
+}

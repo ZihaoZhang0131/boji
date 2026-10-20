@@ -1,0 +1,25 @@
+[Unit]
+Description=Boji private food estimation
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=boji
+Group=boji
+WorkingDirectory=/opt/boji/services/food-estimation
+EnvironmentFile=/etc/boji-food-estimation.env
+ExecStart=/usr/local/bin/node dist/src/main.js
+Restart=on-failure
+RestartSec=5
+TimeoutStopSec=30
+UMask=0077
+StateDirectory=boji-food-estimation
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/var/lib/boji-food-estimation
+
+[Install]
+WantedBy=multi-user.target

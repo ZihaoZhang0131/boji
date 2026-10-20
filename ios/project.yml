@@ -1,0 +1,86 @@
+name: Boji
+options:
+  minimumXcodeGenVersion: 2.45.0
+  deploymentTarget:
+    iOS: "17.0"
+  createIntermediateGroups: true
+  developmentLanguage: zh-Hans
+settings:
+  base:
+    SWIFT_VERSION: "6.0"
+    TARGETED_DEVICE_FAMILY: "1"
+    SUPPORTS_MACCATALYST: NO
+    SUPPORTS_XR_DESIGNED_FOR_IPHONE_IPAD: NO
+    CODE_SIGN_STYLE: Automatic
+    DEVELOPMENT_TEAM: YX25N2A54R
+packages:
+  BojiCore:
+    path: BojiCore
+targets:
+  Boji:
+    type: application
+    platform: iOS
+    sources: [App]
+    dependencies:
+      - package: BojiCore
+        product: BojiDomain
+      - package: BojiCore
+        product: BojiPersistence
+      - package: BojiCore
+        product: BojiEstimation
+      - package: BojiCore
+        product: BojiPortability
+    info:
+      path: App/Info.plist
+      properties:
+        CFBundleDisplayName: 薄记
+        UTExportedTypeDeclarations:
+          - UTTypeIdentifier: com.boji.package
+            UTTypeDescription: 薄记资料包
+            UTTypeConformsTo: [com.apple.package]
+            UTTypeTagSpecification:
+              public.filename-extension: [boji]
+        UIAppFonts:
+          - FusionPixel-12px-zh_hans.otf
+        UILaunchScreen: {}
+        NSCameraUsageDescription: 拍摄饮食照片，用于你自己的饮食记录。照片发送到识别服务前会另行征得授权。
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.boji.personal
+        GENERATE_INFOPLIST_FILE: NO
+        INFOPLIST_KEY_CFBundleDisplayName: 薄记
+        INFOPLIST_KEY_LSApplicationCategoryType: public.app-category.healthcare-fitness
+        INFOPLIST_KEY_UILaunchScreen_Generation: YES
+        INFOPLIST_KEY_UISupportedInterfaceOrientations: UIInterfaceOrientationPortrait
+        MARKETING_VERSION: "0.1.0"
+        CURRENT_PROJECT_VERSION: "1"
+  BojiTests:
+    type: bundle.unit-test
+    platform: iOS
+    sources: [Tests]
+    dependencies:
+      - target: Boji
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.boji.personal.tests
+        GENERATE_INFOPLIST_FILE: YES
+  BojiUITests:
+    type: bundle.ui-testing
+    platform: iOS
+    sources: [UITests]
+    dependencies:
+      - target: Boji
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.boji.personal.uitests
+        GENERATE_INFOPLIST_FILE: YES
+schemes:
+  Boji:
+    build:
+      targets:
+        Boji: all
+    test:
+      targets:
+        - BojiTests
+        - BojiUITests
+      gatherCoverageData: true

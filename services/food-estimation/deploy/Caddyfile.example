@@ -1,0 +1,8 @@
+# Replace with your own DNS name. Caddy obtains and renews a trusted certificate.
+food.your-domain.example {
+    request_body {
+        max_size 2097152
+    }
+    reverse_proxy 127.0.0.1:8787
+    # No access log: URLs, authorization and request bodies must not be recorded.
+}

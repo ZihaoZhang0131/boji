@@ -1,0 +1,37 @@
+{
+  "meals" : [
+    {
+      "deletedAt" : 1792238400,
+      "factsRevision" : 0,
+      "id" : "9C6C4B63-65CF-4989-8B58-7AC5207FA728",
+      "inputRevision" : 0,
+      "isDemo" : false,
+      "lifecycleEpoch" : 0,
+      "manualRevision" : 0,
+      "note" : "Synthetic trash",
+      "photoIDs" : [
+        "79E2516F-DEFC-44AC-9C3D-F7AE3B168918"
+      ],
+      "tags" : [
+
+      ],
+      "time" : {
+        "hour" : 20,
+        "instant" : 1792238400,
+        "localDay" : {
+          "day" : 17,
+          "month" : 10,
+          "year" : 2026
+        },
+        "minute" : 0,
+        "timeZoneIdentifier" : "Asia/Shanghai"
+      }
+    }
+  ],
+  "tombstones" : [
+
+  ],
+  "workouts" : [
+
+  ]
+}
