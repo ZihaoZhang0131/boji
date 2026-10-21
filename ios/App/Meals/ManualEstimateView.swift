@@ -44,6 +44,7 @@ struct ManualEstimateView: View {
     let clock: any AppClock
     let draftID: UUID?
     @Environment(\.dismiss) private var dismiss
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
     @State private var rows: [FoodItemInput]
     @State private var error: String?
     @State private var saving = false
@@ -58,37 +59,66 @@ struct ManualEstimateView: View {
     var body: some View {
         NavigationStack {
             Form {
-                Section {
-                    Text("可以只填写整餐热量，也可以分项记录。克数可留空；已知原克数时按原始比例换算，直接改热量会设定新的比例基准。")
-                }
                 ForEach($rows) { $row in
                     Section {
                         TextField("食物名称", text: $row.name).accessibilityLabel("食物名称")
                             .focused($focusedField, equals: row.id.uuidString + ".name")
-                        TextField("克数（g，可留空）", text: Binding(get: { row.grams }, set: { row.setGrams($0) }))
-                            .keyboardType(.decimalPad).accessibilityLabel("克数（g，可留空）")
-                            .focused($focusedField, equals: row.id.uuidString + ".grams")
-                        TextField("热量（kcal）", text: Binding(get: { row.calories }, set: { row.setCalories($0) }))
-                            .keyboardType(.decimalPad).accessibilityLabel("热量（kcal）").accessibilityIdentifier("manual.calories")
-                            .focused($focusedField, equals: row.id.uuidString + ".kcal")
+                        numericRow("克数 / g") {
+                            TextField("可留空", text: Binding(get: { row.grams }, set: { row.setGrams($0) }))
+                                .keyboardType(.decimalPad).accessibilityLabel("克数（g，可留空）")
+                                .accessibilityIdentifier("克数（g，可留空）")
+                                .multilineTextAlignment(.leading).frame(minHeight: 44)
+                                .focused($focusedField, equals: row.id.uuidString + ".grams")
+                        }
+                        numericRow("热量 / kcal") {
+                            TextField("填写热量", text: Binding(get: { row.calories }, set: { row.setCalories($0) }))
+                                .keyboardType(.decimalPad).accessibilityLabel("热量（kcal）").accessibilityIdentifier("manual.calories")
+                                .multilineTextAlignment(.leading).frame(minHeight: 44)
+                                .focused($focusedField, equals: row.id.uuidString + ".kcal")
+                        }
                         if let message = row.error { Text(message) }
                         Button("删除食物项", role: .destructive) { rows.removeAll { $0.id == row.id } }.frame(minHeight: 44)
                     }
                 }
                 Section {
                     Button("添加食物项") { rows.append(.empty(name: "")) }.frame(minHeight: 44)
-                    if let total = try? FoodEstimateRules.total(rows.map { try $0.value() }) { Text("整餐合计 \(total.description) kcal").accessibilityIdentifier("manual.total") }
+                    if let total = try? FoodEstimateRules.total(rows.map { try $0.value() }) {
+                        Text("整餐合计 \(total.description) kcal")
+                            .font(PixelTheme.font(20, relativeTo: .title3)).monospacedDigit().accessibilityIdentifier("manual.total")
+                    }
                     if let error { Text(error).accessibilityIdentifier("manual.error") }
                     Button(saving ? "正在保存" : "保存人工热量") { Task { await save() } }
                         .frame(minHeight: 44).accessibilityIdentifier("manual.save")
                 }
+                Section {
+                    DisclosureGroup("填写说明") {
+                        Text("可只填整餐热量，也可添加食物分项；克数可留空。")
+                        Text("已知原克数时，修改克数会按比例换算热量；直接修改热量会设定新的比例基准。")
+                            .font(.footnote).foregroundStyle(.secondary)
+                    }
+                }
             }
+            .bojiForm()
             .disabled(saving)
             .scrollDismissesKeyboard(.interactively)
             .recordingKeyboard { focusedField = nil }
-            .navigationTitle("人工热量")
+            .navigationTitle("填写热量")
+            .navigationBarTitleDisplayMode(.inline)
             .toolbar { ToolbarItem(placement: .cancellationAction) { Button("取消") { dismiss() }.disabled(saving) } }
         }.interactiveDismissDisabled(saving).font(PixelTheme.font()).tint(.primary)
+    }
+    @ViewBuilder private func numericRow<Content: View>(_ title: String, @ViewBuilder content: () -> Content) -> some View {
+        if dynamicTypeSize.isAccessibilitySize {
+            VStack(alignment: .leading, spacing: 8) {
+                Text(title).accessibilityHidden(true)
+                content()
+            }
+        } else {
+            HStack(alignment: .firstTextBaseline, spacing: 16) {
+                Text(title).frame(maxWidth: .infinity, alignment: .leading).accessibilityHidden(true)
+                content().frame(width: 112)
+            }
+        }
     }
     private func save() async {
         guard !saving else { return }; saving = true; defer { saving = false }

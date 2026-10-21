@@ -23,12 +23,15 @@ import XCTest
         reveal(kcal, in: app); kcal.tap(); kcal.typeText("200")
         reveal(app.buttons["manual.save"], in: app); app.buttons["manual.save"].tap()
         XCTAssertEqual(app.staticTexts["meal.calories.total"].firstMatch.label, "200 kcal")
+        let history = app.buttons["估算与修正历史"]
+        reveal(history, in: app); history.tap()
         XCTAssertTrue(app.staticTexts["200 kcal · 人工确认"].exists)
 
         reveal(app.buttons["meal.manual"], in: app); app.buttons["meal.manual"].tap()
         let revisedGrams = app.textFields["克数（g，可留空）"]
         revisedGrams.tap()
         revisedGrams.typeText(String(repeating: XCUIKeyboardKey.delete.rawValue, count: 3) + "150")
+        reveal(app.staticTexts["manual.total"], in: app)
         XCTAssertEqual(app.staticTexts["manual.total"].firstMatch.label, "整餐合计 300 kcal")
         reveal(app.buttons["manual.save"], in: app); app.buttons["manual.save"].tap()
         XCTAssertEqual(app.staticTexts["meal.calories.total"].firstMatch.label, "300 kcal")

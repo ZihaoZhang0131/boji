@@ -25,38 +25,48 @@ struct MealDetailView: View {
             List {
                 if let meal {
                     Section {
-                        Text(meal.time.localDay.description + " " + meal.time.displayTime)
-                        Text(meal.time.timeZoneIdentifier).font(.footnote).foregroundStyle(.secondary)
-                        if let slot = meal.slot { Text(slot) }
-                        if !meal.tags.isEmpty { Text(meal.tags.joined(separator: " · ")) }
-                        if !meal.note.isEmpty { Text(meal.note).accessibilityIdentifier("meal.detail.note") }
                         ForEach(meal.photoIDs, id: \.self) { photoID in
                             if let image = images[photoID] {
-                                Image(uiImage: image).resizable().scaledToFit().accessibilityLabel("饮食照片")
+                                Image(uiImage: image).resizable().scaledToFit()
+                                    .clipShape(RoundedRectangle(cornerRadius: 12)).accessibilityLabel("饮食照片")
                             } else { Text("照片暂时无法读取，原记录仍保留。") }
                         }
+                        if !meal.note.isEmpty { Text(meal.note).accessibilityIdentifier("meal.detail.note") }
                     }
-                    Section("当前热量") {
+                    Section("热量") {
                         if let current { EstimateContents(revision: current) }
                         else {
                             Text("待估算").accessibilityIdentifier("meal.calories.unknown")
-                            Text(history.isEmpty ? "尚未取得有效估算。可以先人工填写热量。" : "照片或备注已变化，请重新估算或人工确认。原值保留在历史中。")
+                            if !history.isEmpty {
+                                Text("记录已变化，需重新估算或人工确认。旧值保留在历史中。")
+                                    .font(.footnote).foregroundStyle(.secondary)
+                            }
                         }
                         Button("人工填写或修正") { showingCalories = true }.frame(minHeight: 44)
                             .accessibilityIdentifier("meal.manual")
                         AIRecordControls(workspace: workspace, meal: meal)
                     }
+                    Section {
+                        DisclosureGroup("记录信息") {
+                            LabeledContent("进食时间", value: meal.time.localDay.description + " " + meal.time.displayTime)
+                            LabeledContent("时区", value: meal.time.timeZoneIdentifier)
+                            if let slot = meal.slot { LabeledContent("餐次", value: slot) }
+                            if !meal.tags.isEmpty { LabeledContent("标签", value: meal.tags.joined(separator: " · ")) }
+                        }
+                    }
                     if !history.isEmpty {
-                        Section("估算与修正历史") {
-                            ForEach(history) { revision in
-                                DisclosureGroup {
-                                    EstimateContents(revision: revision)
-                                    Text("输入版本 \(revision.inputRevision)")
-                                } label: {
-                                    VStack(alignment: .leading) {
-                                        Text(revision.totalKcal.description + " kcal · " + revision.sourceTitle)
-                                        Text(revision.createdAt.formatted(date: .abbreviated, time: .shortened)).font(.footnote)
-                                        if revision.id == current?.id { Text("当前有效") }
+                        Section {
+                            DisclosureGroup("估算与修正历史") {
+                                ForEach(history) { revision in
+                                    DisclosureGroup {
+                                        EstimateContents(revision: revision)
+                                        Text("输入版本 \(revision.inputRevision)").font(.footnote).foregroundStyle(.secondary)
+                                    } label: {
+                                        VStack(alignment: .leading, spacing: 4) {
+                                            Text(revision.totalKcal.description + " kcal · " + revision.sourceTitle)
+                                            Text(revision.createdAt.formatted(date: .abbreviated, time: .shortened)).font(.footnote).foregroundStyle(.secondary)
+                                            if revision.id == current?.id { Text("当前有效").font(.footnote) }
+                                        }
                                     }
                                 }
                             }
@@ -69,7 +79,9 @@ struct MealDetailView: View {
                 } else { Text("这条记录已移走，请返回记录页。") }
                 if let error { Text(error) }
             }
-            .navigationTitle("饮食详情")
+            .bojiForm()
+            .navigationTitle("饮食")
+            .navigationBarTitleDisplayMode(.inline)
             .toolbar { ToolbarItem(placement: .cancellationAction) { Button("完成") { dismiss() } } }
             .confirmationDialog("将这条饮食移到回收站？", isPresented: $confirmingTrash, titleVisibility: .visible) {
                 Button("确认删除", role: .destructive) {
@@ -108,18 +120,27 @@ struct MealDetailView: View {
 struct EstimateContents: View {
     let revision: EstimateRevision
     var body: some View {
-        Text(revision.totalKcal.description + " kcal").accessibilityIdentifier("meal.calories.total")
-        Text(revision.sourceTitle)
-        ForEach(revision.items) { item in
-            VStack(alignment: .leading, spacing: 4) {
-                Text(item.name)
-                Text((item.grams.map { $0.description + " g" } ?? "克数未知") + " · " + item.kcal.description + " kcal")
-                ForEach(Array(item.assumptions.enumerated()), id: \.offset) { _, value in Text("假设：" + value).font(.footnote) }
+        VStack(alignment: .leading, spacing: 4) {
+            Text(revision.totalKcal.description + " kcal")
+                .font(PixelTheme.font(24, relativeTo: .title2)).monospacedDigit()
+                .accessibilityIdentifier("meal.calories.total")
+            Text(revision.sourceTitle).font(.footnote).foregroundStyle(.secondary)
+        }
+        if !revision.items.isEmpty || revision.range != nil || !revision.questions.isEmpty || revision.provider != nil {
+            DisclosureGroup("估算明细") {
+                ForEach(revision.items) { item in
+                    VStack(alignment: .leading, spacing: 6) {
+                        Text(item.name)
+                        Text((item.grams.map { $0.description + " g" } ?? "克数未知") + " · " + item.kcal.description + " kcal")
+                            .foregroundStyle(.secondary)
+                        ForEach(Array(item.assumptions.enumerated()), id: \.offset) { _, value in Text("假设：" + value).font(.footnote) }
+                    }.padding(.vertical, 4)
+                }
+                if let range = revision.range { Text("估算范围 \(range.low.description)—\(range.high.description) kcal") }
+                ForEach(Array(revision.questions.enumerated()), id: \.offset) { _, value in Text(value) }
+                if let provider = revision.provider { Text(provider + " · " + (revision.model ?? "模型未知")).font(.footnote).foregroundStyle(.secondary) }
             }
         }
-        if let range = revision.range { Text("估算范围 \(range.low.description)—\(range.high.description) kcal") }
-        ForEach(Array(revision.questions.enumerated()), id: \.offset) { _, value in Text(value) }
-        if let provider = revision.provider { Text(provider + " · " + (revision.model ?? "模型未知")).font(.footnote) }
     }
 }
 

@@ -1,26 +1,26 @@
 <!doctype html>
 <html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>薄记 · 热量功能 v0.6</title><link rel="stylesheet" href="typography.css"><style>
-*{box-sizing:border-box}body{max-width:980px;margin:auto;padding:48px 28px 80px;background:#fff;color:#242424;font-family:var(--playful-font);line-height:1.9}h1{font-size:42px;font-weight:400;margin:0}h2{font-size:25px;font-weight:400;margin:36px 0 14px}h3{font-size:18px;font-weight:400}p,li{font-size:15px}small{font-size:12px;color:#777}a{color:inherit;text-underline-offset:4px}header{padding-bottom:24px;border-bottom:1px solid #ddd}table{width:100%;border-collapse:collapse;font-size:14px}th,td{text-align:left;padding:12px;border-bottom:1px solid #ddd;font-weight:400;vertical-align:top}.note{border-left:2px solid #222;padding:12px 20px;background:#f7f7f5}.scroll-table{overflow:auto}code,pre{font-family:ui-monospace,monospace;font-size:12px}pre{white-space:pre-wrap;overflow-wrap:anywhere;background:#f7f7f5;padding:20px}figure{margin:25px 0}img{width:100%}footer{border-top:1px solid #ddd;padding-top:18px;margin-top:36px}@media(max-width:600px){body{padding:28px 20px}td,th{padding:8px}}
+*{box-sizing:border-box}body{max-width:980px;margin:auto;padding:48px 28px 80px;background:#fff;color:#242424;font-family:var(--playful-font);line-height:1.9}h1{font-size:42px;font-weight:400;margin:0}h2{font-size:25px;font-weight:400;margin:36px 0 14px}h3{font-size:18px;font-weight:400}p,li{font-size:15px}small{font-size:12px;color:#777}a{color:inherit;text-underline-offset:4px}header{padding-bottom:24px;border-bottom:1px solid #ddd}table{width:100%;border-collapse:collapse;font-size:14px}th,td{text-align:left;padding:12px;border-bottom:1px solid #ddd;font-weight:400;vertical-align:top}.note{border:0;border-radius:12px;padding:16px 20px;background:#f3f3f3}.scroll-table{overflow:auto}code,pre{font-family:ui-monospace,monospace;font-size:12px}pre{white-space:pre-wrap;overflow-wrap:anywhere;background:#f7f7f5;padding:20px}figure{margin:25px 0}img{width:100%}footer{border-top:1px solid #ddd;padding-top:18px;margin-top:36px}@media(max-width:600px){body{padding:28px 20px}td,th{padding:8px}}
 </style><link rel="stylesheet" href="pixel-font.css"></head><body>
 <header><h1>薄记 · 热量轻轻记</h1><p>v0.6 — 在记录上增加估算，不把生活变成一张分数表。</p><small>黑白像素 · Fusion Pixel</small><p><a href="index.html">打开交互原型</a> · <a href="gallery.html">查看界面总览</a> · <a href="design-spec.html">早期记录功能设计</a></p></header>
 <div class="note">这是 UI / UX 可交互原型，不是已上线 iOS App。个人信息、公式计算、手动修正、统计与 JSON 导出在浏览器中可用；食物 AI 为明确标注的模拟结果，未调用任何模型接口，不上传图片，也不会收费。iCloud 未连接。</div>
-<h2>01 / 一条轻量的主线</h2>
+<h2>一条轻量的主线</h2>
 <div class="scroll-table"><table><thead><tr><th>界面</th><th>新增能力</th><th>主要动作</th></tr></thead><tbody>
-<tr><td>记录</td><td>当天已记录摄入、运动净消耗；每餐与每次训练显示 kcal、来源及估算状态</td><td>点记录查看明细；点顶部数字进入热量回顾</td></tr>
+<tr><td>记录</td><td>当天已记录摄入、运动净消耗；双列卡片只显示照片或训练图标与热量；详情展示来源和估算状态</td><td>点记录查看明细；点顶部数字进入热量回顾</td></tr>
 <tr><td>记饮食</td><td>照片与备注 → 识别状态 → 总热量、食物组成、份量、估算范围</td><td>先保存也可以；调整克数按比例更新 kcal，或直接改 kcal</td></tr>
 <tr><td>记训练</td><td>体重快照、实际训练时长、训练类型 → 实时显示净消耗</td><td>补时长，确认实际完成组；完成后计入回顾</td></tr>
 <tr><td>回顾</td><td>热量 / 日历 / 照片 / 训练；7 天与 30 天趋势、逐日详情、热量差值</td><td>切范围、点日期、展开数值表；「完整示例」不改变真实记录</td></tr>
 <tr><td>我的</td><td>个人信息与代谢、食物 AI 设置</td><td>填写身高体重等信息；管理自动估算偏好</td></tr>
 </tbody></table></div>
-<h2>02 / 个人信息与估算口径</h2>
+<h2>个人信息与估算口径</h2>
 <p>必填公式性别参数、年龄、身高、体重、日常活动。没有资料时不编造基础代谢；可点击「填入示例」查看效果。原型限定 18–59 岁普通成年人，其他人群需另行设计与验证。性别字段描述的是公式参数，不是性别认同。</p>
 <p>「基础代谢」界面项采用 Mifflin–St Jeor 的<strong>静息代谢估算</strong>：10 × kg + 6.25 × cm − 5 × 年龄 + 常数（男性 +5；女性 −161）。它不是精确测量，也不等于每日应该吃多少。公式来源：<a href="https://pubmed.ncbi.nlm.nih.gov/2305711/">Mifflin 等，1990 原始论文</a>。</p>
 <p>原型日常消耗 = 静息估算 × 日常活动系数（1.2 / 1.35 / 1.5，不含专门记录的训练）。系数为本产品简化估算假设，不声称是个体测量。正式版应校准并审查活动系数的适用性。保存资料从当前选定日期生效，历史日期按当时的资料版本取值。每日摄入目标由用户自行填写；不根据减脂目标自动生成极端缺口。</p>
-<h2>03 / 训练不是吨位换热量</h2>
+<h2>训练不是吨位换热量</h2>
 <p>重量 × 次数 × 组数用于训练量记录，不能直接换算代谢消耗。估算补充实际时长（含常规组间休息，去掉长时间中断）、体重及训练类型：常规力量 3.5 MET，深蹲／硬拉为主 5 MET，高强度力量 6 MET。来源：<a href="https://pacompendium.com/conditioning-exercise/">2024 Adult Compendium · Conditioning Exercise</a>。</p>
 <p>总运动消耗 ≈ MET × 3.5 × kg ÷ 200 × 分钟。界面和汇总采用<strong>运动净消耗</strong> ≈ (MET − 1) × 3.5 × kg ÷ 200 × 分钟，扣除同一时段静息消耗，避免与日常基线重复计算。该人群平均模型对个人仍可能有较大偏差。</p>
 <p>一次训练只估算一次，不把每个动作分别估算后重复相加。未完成的参考组不算完成组；草稿不计入统计。复制上次训练不复制本次时长与热量。缺体重或时长仍可保存记录，但显示「待估算」，不以 0 冒充已知值。保存时保留体重、MET、时长与算法版本快照。</p>
-<h2>04 / 多模态识别的正式接口约定</h2>
+<h2>多模态识别的正式接口约定</h2>
 <p>生产流程：图片与备注 → 用户授权 → 安全后端 → 多模态大模型 → 结构化食物项与份量 → 营养数据校验／估算汇总 → 用户修正 → 记录保存。当前前端只演示这条流程的交互，不包含真实代理服务。</p>
 <div class="scroll-table"><table><thead><tr><th>状态</th><th>界面处理</th></tr></thead><tbody>
 <tr><td>未授权 / 未连接</td><td>原始记录照常保存；说明将发送哪些资料、供应商、保留政策、费用；获得同意后才能发图</td></tr>
@@ -39,13 +39,13 @@ response: {
   questions[], source, model, model_version, created_at
 }</pre>
 <p>认证、密钥、供应商适配和调用预算由后端控制；不把密钥写入前端、Cloud Drive 导出包或聊天记录。客户端可通过 job ID 轮询任务。请求幂等，校验有限数值、非负值、项目合计；识别仅返回数据，不执行图片／备注中的指令。删除记录后丢弃迟到结果；输入版本不一致时保留旧结果但不计入当前统计。正式版范围来自明确份量假设，不把模型自报“置信度”伪装成统计置信区间。</p>
-<h2>05 / 图表怎么读</h2>
+<h2>图表怎么读</h2>
 <p>第一张图：实心柱为用户确认记全的摄入；斜线柱为未记全的已知摄入；虚线为当日估算总消耗（静息 + 日常活动增量 + 运动净消耗）。缺数据处断开，不补 0。点日期查看来源与缺口；30 天用日期选择器保留清楚的触控目标。</p>
 <p>第二张图：摄入 − 估算总消耗。只画用户确认记全、所有餐食与训练均有估算且存在个人资料快照的日期。正负分别表示估算盈余／缺口，不使用红绿评价。日均摄入只对记全天取平均，并显示样本天数。未记录的运动不被自动推断为已发生；「已记全」由用户确认。</p>
 <p>原型图表读取本地实际记录；「看完整示例」是独立的只读演示序列，不写入记录、不导出、不影响统计。样例个人信息不会自动填进用户资料。AI 示例可以保存，但每条都带 demo-ai 来源标签。导出沿用完整 JSON，包含热量来源、修正记录、个人资料版本与训练计算快照；分享前应提示其中包含个人身体信息。</p>
-<h2>06 / 交付与验证</h2><p>像素视觉借鉴《星露谷物语》的物品栏与边框语言，全部插画和图标均为原创 SVG，不使用游戏素材。字体来源：<a href="https://github.com/TakWolf/fusion-pixel-font">Fusion Pixel 官方项目</a>，随包附带 SIL OFL 1.1 许可。</p>
-<p>更新为黑白像素视觉：全套 Fusion Pixel 字体、原创像素图标、硬边框与方角图表；保留原始照片显示方式和饮食／训练主流程。没有增加社交、订阅或 AI 聊天页。浏览器验证范围：个人信息计算与持久化、输入校验、手动热量修正、识别中／失败状态、训练消耗计算、复制清除旧时长、历史快照、统计完整度、7 / 30 天和 320 / 393px 排版、原有记录与导出流程。</p>
+<h2>交付与验证</h2><p>视觉保留像素字体与原创图标，使用单色灰阶、圆角和轻分隔；不使用游戏素材。字体来源：<a href="https://github.com/TakWolf/fusion-pixel-font">Fusion Pixel 官方项目</a>，随包附带 SIL OFL 1.1 许可。</p>
+<p>本轮将网页与原生 iPhone 界面统一为简约手账：Fusion Pixel 字体、原创图标、灰色圆角表面和一致的数字层级。通过尺寸、比例与双列布局处理留白，卡片只保留图像和热量；时间、分类、公式、明细和历史按需展开。表单的标签、单位、错误及关键状态保留。没有增加社交、订阅或 AI 聊天页。浏览器验证范围：个人信息计算与持久化、输入校验、手动热量修正、识别中／失败状态、训练消耗计算、复制清除旧时长、历史快照、统计完整度、7 / 30 天和 320 / 393px 排版、原有记录与导出流程。</p>
 <p>尚未验证：真实供应商接口、真实识别精度、原生相机与键盘、VoiceOver、Dynamic Type、iCloud 和跨设备同步。正式上线前还需隐私政策、用户授权及健康信息相关审核。</p>
-<figure><img src="energy-overview.png" alt="薄记热量功能：记录、食物识别、训练消耗、热量回顾、个人信息"><figcaption><small>示例资料与模拟识别结果，不是用户真实健康数据。</small></figcaption></figure>
+<figure><img src="energy-overview.png?v=20261020-minimal-system" alt="薄记热量功能：记录、食物识别、训练消耗、热量回顾、个人信息"><figcaption><small>示例资料与模拟识别结果，不是用户真实健康数据。</small></figcaption></figure>
 <footer><small>薄记 v0.6 · UI / UX 设计原型 · 字体许可证随 assets 附带。</small></footer>
 </body></html>

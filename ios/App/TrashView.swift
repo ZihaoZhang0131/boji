@@ -13,12 +13,14 @@ struct TrashView: View {
         List {
             Section {
                 Text("删除后保留 30 天。永久删除无法在本机撤销，已导出的备份不会自动撤回。")
+                    .font(.footnote).foregroundStyle(.secondary)
             }
             if items.isEmpty { Text("回收站为空").accessibilityIdentifier("trash.empty") }
             ForEach(items) { item in
-                VStack(alignment: .leading, spacing: 12) {
+                VStack(alignment: .leading, spacing: 8) {
                     Text(item.name)
-                    Text("删除于 " + item.deleted.formatted(date: .abbreviated, time: .shortened)).foregroundStyle(.secondary)
+                    Text("删除于 " + item.deleted.formatted(date: .abbreviated, time: .omitted))
+                        .font(.footnote).foregroundStyle(.secondary)
                     ViewThatFits(in: .horizontal) {
                         HStack { actions(item) }
                         VStack(alignment: .leading) { actions(item) }
@@ -26,6 +28,7 @@ struct TrashView: View {
                 }.padding(.vertical, 8)
             }
         }
+        .bojiForm()
         .navigationTitle("回收站")
         .alert("永久删除这条记录？", isPresented: Binding(get: { deletion != nil }, set: { if !$0 { deletion = nil } })) {
             Button("永久删除", role: .destructive) {

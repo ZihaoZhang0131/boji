@@ -2,6 +2,9 @@
 const pixelPaths={
   camera:'M5 2h6v2h3v1h1v9H1V5h1V4h3z M2 6v7h12V6z M6 7h4v1h1v3h-1v1H6v-1H5V8h1z M7 8v3h2V8z',
   dumbbell:'M2 3h2v10H2zM0 5h2v6H0zM4 7h8v2H4zM12 3h2v10h-2zM14 5h2v6h-2z',
+  'upper-body':'M6 1h4v4H6zM7 5h2v1h3v1h2v2h1v4h-3v-3h-1v5H5v-5H4v3H1V9h1V7h2V6h3z',
+  'lower-body':'M4 1h8v5h1v8h-2V9h-1V7H9v8H7V7H6v2H5v5H3V6h1z',
+  'full-body':'M6 0h4v4H6zM5 5h6v1h2v5h-2V8h-1v8H8v-5H7v5H5V8H4v3H2V6h3z',
   calendar:'M3 1h2v2h6V1h2v2h2v12H1V3h2zM2 7v7h12V7zM4 9h2v2H4zM8 9h2v2H8zM4 12h2v1H4z',
   book:'M2 1h12v14H2zM4 3v10h8V3zM3 3v10h1V3zM6 5h4v1H6zM6 8h4v1H6z',
   folder:'M1 4h5V2h5v2h4v3H1zM1 8h6v3h2V8h6v7H1zM7 7h2v2H7z',

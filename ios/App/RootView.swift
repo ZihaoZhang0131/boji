@@ -4,6 +4,7 @@ import BojiDomain
 struct RootView: View {
     let dependencies: AppDependencies
     @Environment(\.scenePhase) private var scenePhase
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
     @State private var navigation: DateNavigation
     @State private var showingCalendar = false
     @State private var workspace: WorkspaceModel
@@ -11,7 +12,8 @@ struct RootView: View {
     @State private var mealEditor: MealEditorModel?
     @State private var mealDetail: MealSelection?
     @State private var workoutEditor: WorkoutEditorModel?
-    @State private var workoutDetail: WorkoutSelection?
+    @State private var pendingWorkout: Workout?
+    @State private var workoutConflict = false
 
     init(dependencies: AppDependencies) {
         self.dependencies = dependencies
@@ -24,7 +26,12 @@ struct RootView: View {
             NavigationStack {
                 ScrollView {
                     VStack(alignment: .leading, spacing: 24) {
-                        if workspace.isDemo { Text("演示空间 · 不联网、不导出").accessibilityIdentifier("demo.banner") }
+                        if workspace.isDemo {
+                            Text("演示空间 · 不联网、不导出")
+                                .font(PixelTheme.font(13, relativeTo: .footnote))
+                                .foregroundStyle(.secondary)
+                                .accessibilityIdentifier("demo.banner")
+                        }
                         dateNavigation
                         if workspace.snapshot == nil {
                             if let message = workspace.errorMessage {
@@ -36,25 +43,35 @@ struct RootView: View {
                             PixelEmptyState(title: "这天还没有记录", message: "从一餐或一次训练开始。")
                                 .accessibilityIdentifier("records.empty")
                         } else {
-                            ForEach(timeline) { event in timelineRow(event) }
+                            RecordGrid(events: timeline, workspace: workspace, onSelect: openRecord)
                             if let state = workspace.snapshot {
                                 DisclosureGroup("当天汇总") {
                                     DaySummaryView(review: ReviewRules.day(navigation.selectedDay, in: state)) { value in
                                         await workspace.confirm(navigation.selectedDay, value: value)
-                                    }.padding(.vertical)
+                                    }.padding(.top, 16)
                                 }
+                                .padding(.top, 4)
                             }
                         }
                     }
                     .padding()
                 }
+                .background(PixelTheme.canvas)
                 .navigationTitle("薄记")
                 .safeAreaInset(edge: .bottom) {
-                    HStack {
-                        Button("记饮食") { Task { await openMeal() } }.accessibilityIdentifier("meal.new")
-                        Button("记训练") { Task { await openWorkout() } }.accessibilityIdentifier("workout.new")
-                    }.buttonStyle(PixelButtonStyle()).frame(maxWidth: .infinity).padding()
-                        .background(.background).disabled(workspace.snapshot == nil)
+                    actionLayout {
+                        Button { Task { await openMeal() } } label: {
+                            Label("记饮食", systemImage: "plus")
+                                .frame(maxWidth: .infinity, minHeight: 44)
+                                .contentShape(Rectangle())
+                        }.accessibilityIdentifier("meal.new")
+                        Button { Task { await openWorkout() } } label: {
+                            Label("记训练", systemImage: "plus")
+                                .frame(maxWidth: .infinity, minHeight: 44)
+                                .contentShape(Rectangle())
+                        }.accessibilityIdentifier("workout.new")
+                    }.buttonStyle(PixelButtonStyle()).padding(.horizontal).padding(.vertical, 12)
+                        .background(PixelTheme.canvas).disabled(workspace.snapshot == nil)
                 }
             }
             .tabItem { Label("记录", systemImage: "square.and.pencil") }
@@ -62,6 +79,7 @@ struct RootView: View {
             .tabItem { Label("回顾", systemImage: "calendar") }
             NavigationStack {
                 List {
+                    Section("个人") {
                     NavigationLink {
                         ProfileView(workspace: workspace, clock: dependencies.clock)
                     } label: { LabeledContent("个人资料", value: workspace.snapshot?.profiles.isEmpty == false ? "查看与修改" : "待填写") }
@@ -74,18 +92,26 @@ struct RootView: View {
                     .disabled(workspace.snapshot == nil)
                     .accessibilityIdentifier("goal.link")
                     .accessibilityValue(GoalRules.effective(on: LocalDay(dependencies.clock.now, timeZone: dependencies.clock.timeZone), stages: workspace.snapshot?.goals ?? [])?.goal.title ?? "未设置")
+                    }
+                    Section("估算") {
                     NavigationLink { AISettingsView(workspace: workspace) } label: {
                         LabeledContent("AI 估算", value: workspace.snapshot?.aiSettings.acceptedPolicy != nil ? "已授权" : (workspace.snapshot?.aiSettings.serviceURL == nil ? "未配置" : "待授权"))
                     }.disabled(workspace.isDemo).accessibilityIdentifier("ai.settings")
+                    }
+                    Section("资料") {
                     NavigationLink("导出与 Agent") { ExportView(workspace: workspace) }.disabled(workspace.isDemo || workspace.snapshot == nil).accessibilityIdentifier("export.link")
                     NavigationLink("导入与恢复") { ImportView(workspace: workspace) }.disabled(workspace.isDemo || workspace.snapshot == nil).accessibilityIdentifier("import.link")
                     NavigationLink("目录备份") { BackupView(workspace:workspace) }.disabled(workspace.isDemo || workspace.snapshot == nil).accessibilityIdentifier("backup.link")
                     NavigationLink("回收站") { TrashView(workspace: workspace) }
+                    }
+                    Section {
                     Button(workspace.isDemo ? "退出演示" : "体验演示") { Task { await workspace.toggleDemo() } }
                         .disabled(workspace.session == nil || workspace.isLoading)
                         .accessibilityIdentifier("demo.toggle")
                     if workspace.isDemo { Text("演示内容保存在独立临时空间，不会进入个人备份或 AI 上传。") }
+                    }
                 }
+                .bojiForm()
                 .navigationTitle("我的")
             }
             .tabItem { Label("我的", systemImage: "person.crop.square") }
@@ -114,13 +140,23 @@ struct RootView: View {
             MealDetailView(id: selection.id, workspace: workspace, clock: dependencies.clock)
                 .onAppear { navigation.isEditing = true }
         }
-        .sheet(item: $workoutEditor, onDismiss: { finishEditing() }) { model in
-            WorkoutEditorView(model: model, onSaved: { day in try? await workspace.refresh(); navigation.select(day) }, onClosed: { try? await workspace.refresh() })
+        .sheet(item: $workoutEditor, onDismiss: {
+            if workoutEditor == nil { finishEditing() }
+            else { navigation.isEditing = true }
+        }) { model in
+            WorkoutEditorView(model: model,
+                              onSaved: { day in try? await workspace.refresh(); navigation.select(day) },
+                              onClosed: { try? await workspace.refresh() },
+                              workspace: workspace, clock: dependencies.clock,
+                              onReplaceEditor: { workoutEditor = $0; navigation.isEditing = true },
+                              onRecordRemoved: { workoutEditor = nil })
+                .id(model.id)
         }
-        .sheet(item: $workoutDetail, onDismiss: { finishEditing() }) { selection in
-            WorkoutDetailView(id: selection.id, workspace: workspace, clock: dependencies.clock)
-                .onAppear { navigation.isEditing = true }
-        }
+        .confirmationDialog("已有进行中的训练草稿", isPresented: $workoutConflict, titleVisibility: .visible) {
+            Button("继续已有草稿") { pendingWorkout = nil; Task { await openWorkout() } }
+            Button("放弃旧草稿并编辑这次训练", role: .destructive) { Task { await discardWorkoutDraftAndOpen() } }
+            Button("取消", role: .cancel) { pendingWorkout = nil }
+        } message: { Text("每次只保留一个活动训练。旧草稿不会被覆盖；放弃后，其未保存为正式训练的修改将丢弃。") }
         .confirmationDialog("恢复上次升级前资料？", isPresented: $confirmingRecovery, titleVisibility: .visible) {
             Button("确认恢复") { Task { await workspace.restorePreviousStore() } }
         } message: { Text("仅在存在完整旧版本时切换。升级后的资料目录会保留，请勿卸载应用。") }
@@ -156,40 +192,41 @@ struct RootView: View {
     }
 
     private var timeline: [TimelineEvent] { workspace.snapshot.map { RecordQuery.timeline(on: navigation.selectedDay, in: $0) } ?? [] }
+    private var actionLayout: AnyLayout {
+        dynamicTypeSize.isAccessibilitySize
+            ? AnyLayout(VStackLayout(spacing: 8))
+            : AnyLayout(HStackLayout(spacing: 12))
+    }
     private func finishEditing() { navigation.isEditing = false; navigation.refresh(clock: dependencies.clock) }
-    @ViewBuilder private func timelineRow(_ event: TimelineEvent) -> some View {
+    private func openRecord(_ event: TimelineEvent) {
         switch event {
         case .meal(let meal):
-            Button { mealDetail = MealSelection(id: meal.id) } label: {
-                HStack(alignment: .top) {
-                    if let photoID = meal.photoIDs.first { MealThumbnail(photoID: photoID, workspace: workspace) }
-                    VStack(alignment: .leading, spacing: 8) {
-                        Text(meal.time.displayTime).foregroundStyle(.secondary)
-                        Text(meal.note.isEmpty ? "照片饮食" : meal.note)
-                        Text(calories(for: meal)).foregroundStyle(.secondary)
-                    }
-                }.frame(maxWidth: .infinity, minHeight: 44, alignment: .leading)
-            }.buttonStyle(.plain).accessibilityIdentifier("meal.row.\(meal.id)")
+            mealDetail = MealSelection(id: meal.id)
         case .workout(let workout):
-            Button { workoutDetail = WorkoutSelection(id: workout.id) } label: {
-                VStack(alignment: .leading, spacing: 8) {
-                    Text(workout.time.displayTime)
-                    Text(workout.name.isEmpty ? "训练" : workout.name)
-                    Text("\(workout.exercises.flatMap(\.sets).count) 个完成组")
-                }.frame(maxWidth: .infinity, minHeight: 44, alignment: .leading)
-            }.buttonStyle(.plain).accessibilityIdentifier("workout.row.\(workout.id)")
+            Task { await openWorkout(editing: workout) }
         }
     }
-    private func openWorkout() async {
+    private func openWorkout(editing: Workout? = nil) async {
         do {
-            workoutEditor = try await WorkoutEditorModel.open(repository: workspace.activeRepository(), clock: dependencies.clock, day: navigation.selectedDay)
+            workoutEditor = try await WorkoutEditorModel.open(repository: workspace.activeRepository(), clock: dependencies.clock, day: editing?.time.localDay ?? navigation.selectedDay, editing: editing)
+            pendingWorkout = nil
             navigation.isEditing = true
+        } catch WorkoutEditorError.activeDraft {
+            pendingWorkout = editing
+            workoutConflict = true
         } catch { workspace.errorMessage = error.userMessage }
     }
 
-    private func calories(for meal: Meal) -> String {
-        guard let estimate = workspace.snapshot?.estimates.first(where: { $0.id == meal.currentEstimateID && $0.inputRevision == meal.inputRevision && $0.source != .demo }) else { return "待估算" }
-        return estimate.totalKcal.description + " kcal · " + estimate.sourceTitle
+    private func discardWorkoutDraftAndOpen() async {
+        let target = pendingWorkout
+        do {
+            let repository = try await workspace.activeRepository()
+            if let draft = try await repository.snapshot().drafts.first(where: { $0.content.kind == .workout }) {
+                try await repository.discardDraft(id: draft.id, at: dependencies.clock.now, operationID: UUID())
+            }
+            try await workspace.refresh()
+            await openWorkout(editing: target)
+        } catch { workspace.errorMessage = error.userMessage }
     }
 
     private func openMeal(editing: Meal? = nil) async {
@@ -201,38 +238,41 @@ struct RootView: View {
     }
 
     private var dateNavigation: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            HStack {
+        VStack(alignment: .leading, spacing: 4) {
+            HStack(spacing: 8) {
                 Button { navigation.select(navigation.selectedDay.adding(days: -1)) } label: {
-                    Image(systemName: "chevron.left").frame(minWidth: 44, minHeight: 44)
+                    Image(systemName: "chevron.left")
+                        .frame(minWidth: 44, minHeight: 44)
+                        .contentShape(Rectangle())
                 }
                 .accessibilityLabel("前一天")
                 Button { showingCalendar = true } label: {
                     Text(navigation.selectedDay.description)
-                        .lineLimit(1).minimumScaleFactor(0.5)
+                        .font(PixelTheme.font(20, relativeTo: .title3))
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.7)
                         .monospacedDigit().frame(maxWidth: .infinity, minHeight: 44)
+                        .contentShape(Rectangle())
                 }
                 .accessibilityIdentifier("records.date")
                 .accessibilityLabel("记录日期")
                 .accessibilityValue(navigation.selectedDay.description)
                 Button { navigation.select(navigation.selectedDay.adding(days: 1)) } label: {
-                    Image(systemName: "chevron.right").frame(minWidth: 44, minHeight: 44)
+                    Image(systemName: "chevron.right")
+                        .frame(minWidth: 44, minHeight: 44)
+                        .contentShape(Rectangle())
                 }
                 .accessibilityLabel("后一天")
             }
-            HStack {
-                TimelineView(.periodic(from: .now, by: 60)) { _ in
-                    Text("现在 " + RecordTime(clock: dependencies.clock).displayTime)
-                        .foregroundStyle(.secondary)
+            if !navigation.followsToday && navigation.selectedDay != LocalDay(dependencies.clock.now, timeZone: dependencies.clock.timeZone) {
+                Button { navigation.returnToToday(clock: dependencies.clock) } label: {
+                    Text("回到今天")
+                        .frame(maxWidth: .infinity, minHeight: 44)
+                        .contentShape(Rectangle())
                 }
-                Spacer()
-                if !navigation.followsToday {
-                    Button("回到今天") { navigation.returnToToday(clock: dependencies.clock) }
-                        .frame(minHeight: 44)
-                        .accessibilityIdentifier("records.today")
-                }
+                .accessibilityIdentifier("records.today")
             }
         }
-        .buttonStyle(PixelButtonStyle())
+        .buttonStyle(.plain)
     }
 }

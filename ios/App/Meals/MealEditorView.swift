@@ -32,12 +32,12 @@ struct MealEditorView: View {
                         VStack(alignment: .leading, spacing: 8) {
                             if let image = model.images[id] {
                                 Image(uiImage: image).resizable().scaledToFit().frame(maxHeight: 200)
+                                    .clipShape(RoundedRectangle(cornerRadius: 12))
                                     .accessibilityLabel("饮食照片 \(index + 1)")
                             } else { Text("照片无法读取，请移除或重新选择。") }
-                            HStack {
-                                Button("前移") { model.movePhoto(id, earlier: true) }.disabled(index == 0)
-                                Button("后移") { model.movePhoto(id, earlier: false) }.disabled(index == model.meal.photoIDs.count - 1)
-                                Button("移除", role: .destructive) { model.removePhoto(id) }
+                            ViewThatFits(in: .horizontal) {
+                                HStack { photoActions(id, index: index) }
+                                VStack(alignment: .leading) { photoActions(id, index: index) }
                             }.buttonStyle(PixelButtonStyle())
                         }
                     }
@@ -52,32 +52,39 @@ struct MealEditorView: View {
                     }
                     if let error = model.error { Text(error).accessibilityIdentifier("meal.photoImportError") }
                 }
-                Section("写一句话") {
+                Section {
                     TextField("吃了什么、份量或补充说明", text: Binding(get: { model.meal.note }, set: { model.setNote($0) }), axis: .vertical)
                         .lineLimit(3...8).accessibilityIdentifier("meal.note")
                         .focused($focusedField, equals: "note")
-                    Text("照片或文字至少填写一项。AI 未配置时也可保存，之后手动填写热量。")
-                }
-                Section("进食信息") {
-                    DatePicker("进食日期和时间", selection: Binding(get: { model.selectedDate }, set: { model.selectedDate = $0 }))
-                    Text("记录时区：" + model.meal.time.timeZoneIdentifier).font(.footnote)
-                    Picker("餐次（可选）", selection: Binding(get: { model.meal.slot ?? "" }, set: { model.setSlot($0) })) {
-                        Text("未分类").tag("")
-                        ForEach(["早餐", "午餐", "晚餐", "加餐", "下午茶"], id: \.self) { Text($0).tag($0) }
-                    }
-                    TextField("标签，以逗号分隔（可选）", text: $tagsText).accessibilityLabel("饮食标签")
-                        .focused($focusedField, equals: "tags")
-                        .onChange(of: tagsText) { _, value in model.setTags(value) }
-                }
-                Section("热量估算（可选）") {
-                    AIRecordControls(workspace: workspace, meal: model.meal, draftID: model.id, prepare: { try await model.flush() })
-                    if let revision = workspace.snapshot?.estimates.first(where: { $0.id == model.meal.currentEstimateID && $0.inputRevision == model.meal.inputRevision }) { EstimateContents(revision: revision) }
-                    Button("人工填写草稿热量") {
-                        Task { do { try MealRules.validate(model.meal); try await model.flush(); try await workspace.refresh(); showingManual = true } catch { model.error = error.userMessage } }
-                    }.frame(minHeight: 44)
+                        .frame(maxWidth: .infinity, minHeight: 96, alignment: .topLeading)
+                        .contentShape(Rectangle())
+                        .simultaneousGesture(TapGesture().onEnded { focusedField = "note" })
+                } footer: {
+                    Text("照片或文字至少填写一项。")
                 }
                 Section {
-                    Text(model.statusText).accessibilityIdentifier("meal.draftStatus")
+                    DisclosureGroup("更多信息") {
+                        DatePicker("进食日期和时间", selection: Binding(get: { model.selectedDate }, set: { model.selectedDate = $0 }))
+                        LabeledContent("时区", value: model.meal.time.timeZoneIdentifier)
+                            .font(.footnote).foregroundStyle(.secondary)
+                        Picker("餐次", selection: Binding(get: { model.meal.slot ?? "" }, set: { model.setSlot($0) })) {
+                            Text("未分类").tag("")
+                            ForEach(["早餐", "午餐", "晚餐", "加餐", "下午茶"], id: \.self) { Text($0).tag($0) }
+                        }
+                        TextField("标签，以逗号分隔（可选）", text: $tagsText).accessibilityLabel("饮食标签")
+                            .focused($focusedField, equals: "tags")
+                            .onChange(of: tagsText) { _, value in model.setTags(value) }
+                    }
+                }
+                Section("热量") {
+                    if let revision = workspace.snapshot?.estimates.first(where: { $0.id == model.meal.currentEstimateID && $0.inputRevision == model.meal.inputRevision }) { EstimateContents(revision: revision) }
+                    Button("人工填写热量") {
+                        Task { do { try MealRules.validate(model.meal); try await model.flush(); try await workspace.refresh(); showingManual = true } catch { model.error = error.userMessage } }
+                    }.frame(minHeight: 44)
+                    AIRecordControls(workspace: workspace, meal: model.meal, draftID: model.id, prepare: { try await model.flush() })
+                }
+                Section {
+                    Text(model.statusText).font(.footnote).foregroundStyle(.secondary).accessibilityIdentifier("meal.draftStatus")
                     if case .failed = model.saveStatus { Button("重试保存草稿") { Task { await close(flushOnly: true) } } }
                     if let error = model.error { Text(error).accessibilityIdentifier("meal.error") }
                     Button(model.busy ? "正在保存" : "保存饮食") {
@@ -89,10 +96,12 @@ struct MealEditorView: View {
                         .frame(minHeight: 44)
                 }
             }
+            .bojiForm()
             .disabled(model.busy)
             .scrollDismissesKeyboard(.interactively)
             .recordingKeyboard { focusedField = nil }
             .navigationTitle(model.isEditing ? "编辑饮食" : "记一餐")
+            .navigationBarTitleDisplayMode(.inline)
             .toolbar { ToolbarItem(placement: .cancellationAction) { Button("收起") { Task { await close() } }.disabled(model.busy) } }
             .confirmationDialog("确定放弃？", isPresented: $confirmingDiscard, titleVisibility: .visible) {
                 Button("确认放弃", role: .destructive) { Task { if await model.discard() { await onClosed(); dismiss() } } }
@@ -126,6 +135,11 @@ struct MealEditorView: View {
         .sheet(isPresented: $showingCamera) {
             CameraView(onCapture: { data in Task { await model.addPhoto(data) } }, onError: { model.error = $0 })
         }
+    }
+    @ViewBuilder private func photoActions(_ id: UUID, index: Int) -> some View {
+        Button("前移") { model.movePhoto(id, earlier: true) }.disabled(index == 0)
+        Button("后移") { model.movePhoto(id, earlier: false) }.disabled(index == model.meal.photoIDs.count - 1)
+        Button("移除", role: .destructive) { model.removePhoto(id) }
     }
     private func close(flushOnly: Bool = false) async {
         importTask?.cancel()

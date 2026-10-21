@@ -48,21 +48,27 @@ struct ProfileView: View {
                     Text("较多活动 · 1.5").tag(Decimal?.some(1.5))
                 }
                 .accessibilityIdentifier("profile.activity")
-                Text("日常活动估算不含已记录的训练。训练净消耗单独计算。")
+                Text("日常活动不含训练，运动净消耗另计。")
                     .font(.footnote).foregroundStyle(.secondary)
             }
             Section("自定摄入目标") {
                 numeric("每日摄入目标（kcal，可留空）", text: $target)
-                Text("留空表示未设置。阶段目标不会自动填入摄入数值。")
+                Text("留空即未设置，阶段目标不会自动填入数值。")
+                    .font(.footnote).foregroundStyle(.secondary)
             }
             Section("生效日期") {
                 DatePicker("资料开始生效", selection: $effectiveDate, in: ...clock.now, displayedComponents: .date)
-                Text("今天修改资料不改变过去日期的日常基线。历史训练始终保留当次体重快照。")
+                Text("今天生效不影响历史日常基线；训练保留当次体重。")
+                    .font(.footnote).foregroundStyle(.secondary)
             }
             if let profile = try? input() {
                 Section("估算预览") {
                     LabeledContent("静息估算（kcal／天）", value: EnergyRules.resting(profile).map(String.init) ?? "未知")
                     LabeledContent("日常消耗基线（kcal／天）", value: EnergyRules.baseline(profile).map(String.init) ?? "未知")
+                    DisclosureGroup("估算说明") {
+                        Text("静息估算不等于每日摄入目标。日常基线包含日常活动，训练净消耗另计。")
+                            .font(.footnote).foregroundStyle(.secondary)
+                    }
                 }
             }
             if let error { Section { Text(error).foregroundStyle(.primary).accessibilityIdentifier("profile.error") } }
@@ -75,17 +81,21 @@ struct ProfileView: View {
                 .frame(minHeight: 44)
                 .accessibilityIdentifier("profile.save")
             }
-            Section("历史版本") {
-                if let versions = workspace.snapshot?.profiles, !versions.isEmpty {
-                    ForEach(versions.sorted { $0.sequence > $1.sequence }) { version in
-                        VStack(alignment: .leading, spacing: 8) {
-                            Text(version.effectiveDay.description + " 起生效")
-                            Text("体重 \(version.profile.weightKG.description) kg · 身高 \(version.profile.heightCM.description) cm")
+            Section {
+                DisclosureGroup("历史版本") {
+                    if let versions = workspace.snapshot?.profiles, !versions.isEmpty {
+                        ForEach(versions.sorted { $0.sequence > $1.sequence }) { version in
+                            VStack(alignment: .leading, spacing: 4) {
+                                Text(version.effectiveDay.description + " 起生效")
+                                Text("\(version.profile.weightKG.description) kg · \(version.profile.heightCM.description) cm")
+                                    .font(.footnote).foregroundStyle(.secondary)
+                            }
                         }
-                    }
-                } else { Text("还没有个人资料") }
+                    } else { Text("还没有个人资料") }
+                }
             }
         }
+        .bojiForm()
         .navigationTitle("个人资料")
         .scrollDismissesKeyboard(.interactively)
         .recordingKeyboard { focusedField = nil }

@@ -32,25 +32,32 @@ struct GoalView: View {
                 .accessibilityIdentifier("goal.choice")
                 .accessibilityValue(selected?.title ?? "请选择")
                 DatePicker("开始日期", selection: $startDate, in: ...clock.now, displayedComponents: .date)
-                TextField("阶段备注", text: $note, axis: .vertical).lineLimit(3...8).accessibilityLabel("阶段备注")
+                TextField("阶段备注", text: $note, axis: .vertical).lineLimit(2...6).accessibilityLabel("阶段备注")
                     .focused($noteFocused)
-                Text("目标只记录阶段背景，不会自动设定摄入量。仅改备注不会新增阶段。")
+                Text("记录当前阶段，不自动设定摄入量。")
+                    .font(.footnote).foregroundStyle(.secondary)
             }
             if let error { Text(error) }
             Button(saving ? "正在保存" : "保存阶段") { Task { await save() } }
                 .disabled(saving || selected == nil).frame(minHeight: 44)
-            Section("阶段历史") {
-                if let goals = workspace.snapshot?.goals, !goals.isEmpty {
-                    ForEach(goals.sorted { $0.sequence > $1.sequence }) { goal in
-                        VStack(alignment: .leading, spacing: 8) {
-                            Text(goal.goal.title)
-                            Text(goal.startDay.description + " — " + (goal.endDay.map { $0.description + " 前" } ?? "至今"))
-                            if !goal.note.isEmpty { Text(goal.note) }
+            Section {
+                DisclosureGroup("阶段历史") {
+                    if let goals = workspace.snapshot?.goals, !goals.isEmpty {
+                        ForEach(goals.sorted { $0.sequence > $1.sequence }) { goal in
+                            VStack(alignment: .leading, spacing: 4) {
+                                Text(goal.goal.title)
+                                Text(goal.startDay.description + " — " + (goal.endDay.map { $0.description + " 前" } ?? "至今"))
+                                    .font(.footnote).foregroundStyle(.secondary)
+                                if !goal.note.isEmpty { Text(goal.note).font(.footnote) }
+                            }
                         }
-                    }
-                } else { Text("还没有阶段目标") }
+                    } else { Text("还没有阶段目标") }
+                    Text("仅改备注不会新增阶段。")
+                        .font(.footnote).foregroundStyle(.secondary)
+                }
             }
         }
+        .bojiForm()
         .navigationTitle("阶段目标")
         .scrollDismissesKeyboard(.interactively)
         .recordingKeyboard { noteFocused = false }

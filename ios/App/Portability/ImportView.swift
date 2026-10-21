@@ -25,7 +25,8 @@ struct ImportView: View {
     var body: some View {
         Form {
             Section {
-                Text("选择完整 .boji 资料包或原型导出的版本 1 JSON，校验和预览之后再写入。导入不会恢复外部令牌、发送授权或识别任务。")
+                Text("选择 .boji 资料包或原型版本 1 JSON，预览后再导入。不会恢复外部令牌、发送授权或识别任务。")
+                    .font(.footnote).foregroundStyle(.secondary)
                 Button(busy ? "正在下载、校验或导入" : "选择资料包") { showPicker = true }.frame(minHeight:44).disabled(busy || workspace.isDemo).accessibilityIdentifier("import.select")
                 if let error { Text(error).accessibilityIdentifier("import.error") }
                 if let message { Text(message).accessibilityIdentifier("import.result") }
@@ -47,7 +48,8 @@ struct ImportView: View {
             if let preview {
                 Section("导入预览") {
                     Text("新增 \(preview.added) · 替换 \(preview.replaced) · 相同 \(preview.duplicates) · 跳过 \(preview.skipped)").accessibilityIdentifier("import.preview")
-                    Text("排除演示内容 \(preview.excludedDemo) 项。")
+                    Text("已排除 \(preview.excludedDemo) 项演示内容。")
+                        .font(.footnote).foregroundStyle(.secondary)
                     ForEach(preview.notices,id:\.self) { Text($0) }
                     if !preview.conflicts.isEmpty {
                         Picker("内容冲突",selection:$policy) {
@@ -63,18 +65,21 @@ struct ImportView: View {
                                 }))
                             } else { Text(conflict.title) }
                         }
+                        Text("同日身体资料、重叠阶段或草稿会产生冲突。旧包中的已删除记录需单独选择恢复；采用导入版本不会撤销永久删除。")
+                            .font(.footnote).foregroundStyle(.secondary)
                     }
-                    Text("同日身体资料、重叠阶段或活动草稿会显示冲突。旧包的已删除记录必须单独选择恢复；采用导入版本不会自动撤销永久删除。")
                     Button(preview.hasChanges ? "确认导入预览中的变更" : "没有需要导入的变更") { confirming = true }
                         .frame(minHeight:44).disabled(busy || !preview.hasChanges).accessibilityIdentifier("import.apply")
                 }
             }
             Section("恢复") {
-                Text("激活新库前保留完整旧库。若需要回退，请核对导入后的新增记录，再恢复导入前版本。")
+                Text("恢复前请先导出当前资料。恢复不会合并导入后的新记录，原版本仍保留可回退。")
+                    .font(.footnote).foregroundStyle(.secondary)
                 Button("恢复上次导入或升级前资料") { confirmingRestore = true }
                     .frame(minHeight:44).disabled(busy || workspace.isDemo)
             }
         }
+        .bojiForm()
         .navigationTitle("导入与恢复")
         .onChange(of:policy) { _,_ in Task { await updatePreview() } }
         .sheet(isPresented:$showPicker) { PackageOpenPicker { url in Task { await stage(url) } } }
@@ -83,7 +88,7 @@ struct ImportView: View {
         } message: { Text("当前版本中的新记录不会合并进旧版本。请先导出当前资料；原当前版本仍作为回退版本保留。") }
         .confirmationDialog("按当前预览导入？",isPresented:$confirming,titleVisibility:.visible) {
             Button("确认导入") { Task { await apply() } }
-        } message: { Text("会新建完整影子库再激活；内容冲突按当前选择处理，旧库保留可回退。") }
+        } message: { Text("先生成完整新库再切换。冲突按当前选择处理，旧库保留可回退。") }
     }
     private func stage(_ url:URL) async {
         busy = true;error = nil;message = nil;preview = nil;package = nil;prototypeData = nil;prototypePreview = nil;confirmedPrototype = false;confirmedHistory = false;restored = [];policy = .keepLocal;previewGeneration += 1

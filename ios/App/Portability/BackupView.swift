@@ -9,9 +9,10 @@ struct BackupView:View {
     private var backup:BackupState { workspace.snapshot?.backup ?? BackupState() }
     var body:some View {
         Form {
-            Section("保存到自己的目录") {
-                Text("选择 iCloud Drive 或其他可写目录。薄记只管理其中 Boji／资料集子目录，保留每份完整备份。")
+            Section("备份目录") {
                 Text(backup.directoryLabel ?? "尚未连接目录").accessibilityIdentifier("backup.directory")
+                Text("可选 iCloud Drive 或其他可写目录，完整备份存入 Boji／资料集子目录。")
+                    .font(.footnote).foregroundStyle(.secondary)
                 Button(backup.directoryBookmark == nil ? "选择备份目录" : "更换备份目录") { picker=true }.frame(minHeight:44)
                 if backup.directoryBookmark != nil {
                     Button("立即备份") { Task { await workspace.backupNow() } }.frame(minHeight:44).accessibilityIdentifier("backup.now")
@@ -21,16 +22,25 @@ struct BackupView:View {
             Section("备份状态") {
                 Text(status).accessibilityIdentifier("backup.status")
                 if let date=backup.lastWrittenAt { LabeledContent("上次目录写入",value:date.formatted(date:.abbreviated,time:.shortened)) }
-                if let revision=backup.lastPublishedRevision { Text("完整备份修订：\(revision)；本机当前修订：\(workspace.snapshot?.dataset.revision ?? 0)") }
                 if let message=workspace.backupError ?? backup.lastError { Text(message).accessibilityIdentifier("backup.error") }
-                Text("目录写入与系统上传是两个步骤。只有所有必要文件的系统状态均为已上传时才显示确认；这不代表 Mac 已下载。")
+                Text("写入目录后由系统上传；Mac 是否已下载需在 Mac 确认。")
+                    .font(.footnote).foregroundStyle(.secondary)
             }
-            Section("在 Mac 上读取") {
-                Text("打开所选目录中的 Boji／资料集子目录，按 latest.json 定位完整 .boji 包。下载全部文件并核验 manifest 后，再交给 Agent。")
-                Text("Mac 修改不会自动写回手机。外部改动或不完整指针会停止后续发布；可选择新空目录，或从完整包走导入预览。")
-                Text("连续编辑会合并备份。应用被暂停时不能保证后台完成；重新打开后继续，也可点立即备份。旧备份不会随手机删除而撤回，请自行管理目录空间。")
+            Section {
+                DisclosureGroup("在 Mac 上读取") {
+                    Text("打开所选目录中的 Boji／资料集子目录，按 latest.json 定位完整 .boji 包。下载全部文件并核验 manifest 后，再交给 Agent。")
+                    Text("Mac 修改不会自动写回手机。外部改动或不完整指针会停止后续发布；可选择新空目录，或从完整包走导入预览。")
+                }
+                DisclosureGroup("备份方式与技术状态") {
+                    if let revision=backup.lastPublishedRevision { Text("完整备份修订：\(revision)；本机当前修订：\(workspace.snapshot?.dataset.revision ?? 0)") }
+                    Text("只有所有必要文件的系统状态均为已上传时才显示确认；这不代表 Mac 已下载。")
+                    Text("薄记只管理 Boji／资料集子目录，保留每份完整备份。连续编辑会合并备份；App 被暂停时不能保证后台完成，重新打开后继续，也可点立即备份。")
+                }
+                Text("手机删除不会撤回旧备份，请自行管理目录空间。")
+                    .font(.footnote).foregroundStyle(.secondary)
             }
         }
+        .bojiForm()
         .navigationTitle("目录备份")
         .disabled(workspace.backupBusy || workspace.isDemo)
         .sheet(isPresented:$picker) { BackupDirectoryPicker { url in Task { await workspace.connectBackup(url) } } }

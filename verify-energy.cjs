@@ -13,7 +13,7 @@ const fs=require('node:fs');
  assert.equal(await p.evaluate(()=>dayEnergy(selectedDate).balance),null);
  await p.click('[data-scene="profile"]');await p.fill('#profile-age','10');await p.click('#save-profile');assert.match(await p.locator('#profile-error').innerText(),/有效信息/);
  await p.click('#profile-example');assert.match(await p.locator('#profile-result').innerText(),/1,659/);
- await p.click('#save-profile');assert.equal(await p.evaluate(()=>dayEnergy(selectedDate).base),1991);
+ await p.fill('#profile-target','0');await p.locator('details').filter({has:p.locator('#profile-target')}).locator('summary').click();await p.click('#save-profile');assert.match(await p.locator('#profile-error').innerText(),/每日摄入目标/);assert.notEqual(await p.locator('details').filter({has:p.locator('#profile-target')}).getAttribute('open'),null);assert(await p.locator('#profile-target').evaluate(e=>e===document.activeElement));await p.fill('#profile-target','');await p.click('#save-profile');assert.equal(await p.evaluate(()=>dayEnergy(selectedDate).base),1991);
  assert.equal(await p.evaluate(()=>dayEnergy('2026-10-08').bmr),1684);
  await p.reload();assert.equal(await p.evaluate(()=>state.profile.weight),70);
  // A reference workout is not a completed one, nor does its tonnage imply kcal.

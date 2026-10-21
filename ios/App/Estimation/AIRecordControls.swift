@@ -15,7 +15,7 @@ struct AIRecordControls: View {
     private var authorized: Bool { workspace.snapshot?.aiSettings.acceptedPolicy != nil && !workspace.isDemo }
     var body: some View {
         if workspace.isDemo { Text("演示空间不发送识别请求。") }
-        else if !authorized { Text("AI 未配置或未授权。可在「我的—AI 估算」配置千问；人工填写不受影响。") }
+        else if !authorized { Text("AI 未配置或未授权。前往「我的—AI 估算」设置，仍可人工填写。") }
         else {
             if let job {
                 Text(title(job)).accessibilityIdentifier("ai.job.status")
@@ -33,8 +33,8 @@ struct AIRecordControls: View {
         }
         if let error { Text(error) }
         if let message = workspace.aiError { Text(message) }
-        Text("识别仅为估算，未知克数不代表零。可查看假设、范围和历史，再按实际情况修正。")
-            .font(.footnote)
+        Text("AI 结果为估算，未知克数不代表零。")
+            .font(.footnote).foregroundStyle(.secondary)
             .confirmationDialog("重新请求模型？", isPresented: $retryConfirmation, titleVisibility: .visible) {
                 Button("确认重新请求") { Task { await request() } }
             } message: { Text("会创建新尝试，可能再次产生费用。旧估算和人工修正保留在历史中。") }
