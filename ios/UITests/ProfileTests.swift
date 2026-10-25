@@ -2,9 +2,9 @@ import XCTest
 
 @MainActor final class ProfileTests: XCTestCase {
     override func setUpWithError() throws { continueAfterFailure = false }
-    func testProfileAndGoalPersistWithoutInventedTarget() {
+    func testProfilePersistsWithoutInventedTarget() {
         let app = XCUIApplication(); app.launchArguments = ["--ui-test-store", UUID().uuidString]; app.launch()
-        app.tabBars.buttons["我的"].tap(); app.buttons["profile.link"].tap()
+        showMineRoot(in: app); app.buttons["profile.link"].tap()
         app.buttons["profile.sex"].tap(); app.buttons["男性公式"].tap()
         enter("年龄（岁）", value: "28", in: app)
         enter("身高（cm）", value: "175", in: app)
@@ -13,12 +13,8 @@ import XCTest
         reveal(app.buttons["profile.save"], in: app); app.buttons["profile.save"].tap()
         XCTAssertTrue(app.buttons["profile.link"].waitForExistence(timeout: 5))
         XCTAssertEqual(app.buttons["profile.link"].value as? String, "查看与修改")
-        app.buttons["goal.link"].tap()
-        XCTAssertEqual(app.buttons["goal.choice"].value as? String, "请选择")
-        XCTAssertFalse(app.buttons["保存阶段"].isEnabled)
-        app.buttons["goal.choice"].tap(); app.buttons["保持状态"].tap(); app.buttons["保存阶段"].tap()
-        app.terminate(); app.launch(); app.tabBars.buttons["我的"].tap()
-        XCTAssertEqual(app.buttons["goal.link"].value as? String, "保持状态")
+        XCTAssertFalse(app.buttons["goal.link"].exists)
+        app.terminate(); app.launch(); showMineRoot(in: app)
         app.buttons["profile.link"].tap()
         XCTAssertEqual(field("体重（kg）", in: app).value as? String, "70")
         let target = field("每日摄入目标（kcal，可留空）", in: app); reveal(target, in: app)
@@ -31,7 +27,8 @@ import XCTest
         app.launch()
         let meal = app.buttons["meal.new"], workout = app.buttons["workout.new"]
         XCTAssertTrue(meal.waitForExistence(timeout: 5)); XCTAssertTrue(meal.isHittable && workout.isHittable)
-        for button in [meal, workout, app.buttons["前一天"], app.buttons["后一天"]] { XCTAssertGreaterThanOrEqual(button.frame.height, 44); XCTAssertGreaterThanOrEqual(button.frame.width, 44) }
+        let currentDate = app.staticTexts["records.date"].value as! String
+        for button in [meal, workout, app.buttons["home.date." + currentDate]] { XCTAssertGreaterThanOrEqual(button.frame.height, 44); XCTAssertGreaterThanOrEqual(button.frame.width, 44) }
         let attachment = XCTAttachment(screenshot: app.screenshot()); attachment.name = "small-screen-largest-text"; attachment.lifetime = .keepAlways; add(attachment)
     }
     private func field(_ label: String, in app: XCUIApplication) -> XCUIElement { app.textFields["profile.field." + label] }

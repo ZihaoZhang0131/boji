@@ -34,7 +34,7 @@ struct AIRecordControls: View {
         if let error { Text(error) }
         if let message = workspace.aiError { Text(message) }
         Text("AI 结果为估算，未知克数不代表零。")
-            .font(.footnote).foregroundStyle(.secondary)
+            .font(.footnote).foregroundStyle(PixelTheme.subtle)
             .confirmationDialog("重新请求模型？", isPresented: $retryConfirmation, titleVisibility: .visible) {
                 Button("确认重新请求") { Task { await request() } }
             } message: { Text("会创建新尝试，可能再次产生费用。旧估算和人工修正保留在历史中。") }

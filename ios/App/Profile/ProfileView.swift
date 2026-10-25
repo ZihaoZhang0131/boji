@@ -49,17 +49,17 @@ struct ProfileView: View {
                 }
                 .accessibilityIdentifier("profile.activity")
                 Text("日常活动不含训练，运动净消耗另计。")
-                    .font(.footnote).foregroundStyle(.secondary)
+                    .font(.footnote).foregroundStyle(PixelTheme.subtle)
             }
             Section("自定摄入目标") {
                 numeric("每日摄入目标（kcal，可留空）", text: $target)
                 Text("留空即未设置，阶段目标不会自动填入数值。")
-                    .font(.footnote).foregroundStyle(.secondary)
+                    .font(.footnote).foregroundStyle(PixelTheme.subtle)
             }
             Section("生效日期") {
                 DatePicker("资料开始生效", selection: $effectiveDate, in: ...clock.now, displayedComponents: .date)
                 Text("今天生效不影响历史日常基线；训练保留当次体重。")
-                    .font(.footnote).foregroundStyle(.secondary)
+                    .font(.footnote).foregroundStyle(PixelTheme.subtle)
             }
             if let profile = try? input() {
                 Section("估算预览") {
@@ -67,7 +67,7 @@ struct ProfileView: View {
                     LabeledContent("日常消耗基线（kcal／天）", value: EnergyRules.baseline(profile).map(String.init) ?? "未知")
                     DisclosureGroup("估算说明") {
                         Text("静息估算不等于每日摄入目标。日常基线包含日常活动，训练净消耗另计。")
-                            .font(.footnote).foregroundStyle(.secondary)
+                            .font(.footnote).foregroundStyle(PixelTheme.subtle)
                     }
                 }
             }
@@ -88,7 +88,7 @@ struct ProfileView: View {
                             VStack(alignment: .leading, spacing: 4) {
                                 Text(version.effectiveDay.description + " 起生效")
                                 Text("\(version.profile.weightKG.description) kg · \(version.profile.heightCM.description) cm")
-                                    .font(.footnote).foregroundStyle(.secondary)
+                                    .font(.footnote).foregroundStyle(PixelTheme.subtle)
                             }
                         }
                     } else { Text("还没有个人资料") }
@@ -96,7 +96,7 @@ struct ProfileView: View {
             }
         }
         .bojiForm()
-        .navigationTitle("个人资料")
+        .navigationTitle("身体资料")
         .scrollDismissesKeyboard(.interactively)
         .recordingKeyboard { focusedField = nil }
         .confirmationDialog("确认回溯修改日常基线？", isPresented: $confirming, titleVisibility: .visible) {

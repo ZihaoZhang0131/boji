@@ -9,6 +9,7 @@ const pixelPaths={
   book:'M2 1h12v14H2zM4 3v10h8V3zM3 3v10h1V3zM6 5h4v1H6zM6 8h4v1H6z',
   folder:'M1 4h5V2h5v2h4v3H1zM1 8h6v3h2V8h6v7H1zM7 7h2v2H7z',
   chart:'M2 2h1v11h12v1H2zM5 8h2v4H5zM9 5h2v7H9zM13 2h2v10h-2z',
+  minus:'M2 7h12v2H2z',
   plus:'M7 2h2v5h5v2H9v5H7V9H2V7h5z',
   arrow:'M5 2h2v2h2v2h2v4H9v2H7v2H5v-2h2v-2h2V6H7V4H5z',
   back:'M9 2h2v2H9v2H7v4h2v2h2v2H9v-2H7v-2H5V6h2V4h2z',
@@ -24,11 +25,9 @@ const pixelPaths={
   wifi:'M1 3h14v2H1zM3 7h10v2H3zM6 11h4v2H6zM7 15h2v1H7z'
 };
 icon=function(name,cls=''){return `<svg class="icon pixel-icon ${cls}" viewBox="0 0 16 16" aria-hidden="true"><path fill-rule="evenodd" d="${pixelPaths[name]||pixelPaths.book}"/></svg>`};
-tabbar=function(){return `<nav class="tabbar" aria-label="应用导航">${[['today','book','记录'],['review','chart','回顾'],['library','folder','我的']].map(([id,i,label])=>`<button data-tab="${id}" class="${page===id?'active':''}" ${page===id?'aria-current="page"':''}>${icon(i)}<span>${label}</span></button>`).join('')}</nav>`};
+tabbar=function(){return `<nav class="tabbar" aria-label="应用导航">${[['today','记录'],['review','回顾'],['library','我的']].map(([id,label])=>`<button data-tab="${id}" class="${page===id?'active':''}" ${page===id?'aria-current="page"':''}>${label}</button>`).join('')}</nav>`};
 const pixelSceneBefore=setScene;
 setScene=function(s){pixelSceneBefore(s);if(s==='today'){$('#note-title').innerHTML='日常，<br>一格一格。';$('#note-description').textContent='把每一餐、每一组，收进自己的像素手账。';$('#try-copy').textContent='记录和热量功能照常。像素小图仅为示例，不改变上传照片。'}};
-const pixelChartBefore=energyChart;
-energyChart=function(...args){return pixelChartBefore(...args).replaceAll('rx="2"','rx="0"').replaceAll('stroke-width=".6"','stroke-width="1"').replace(/<circle cx="([^"]+)" cy="([^"]+)" r="2.5" fill="var\(--bg\)" stroke="var\(--ink\)"\/>/g,(_,x,y)=>`<rect x="${Math.round(Number(x))-2}" y="${Math.round(Number(y))-2}" width="4" height="4" fill="var(--bg)" stroke="var(--ink)"/>`)};
 const pixelPhotoMap={
   'assets/bowl-line.svg':'assets/bowl-pixel.svg',
   'assets/breakfast-line.svg':'assets/breakfast-pixel.svg'

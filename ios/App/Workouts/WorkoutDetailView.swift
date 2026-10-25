@@ -8,13 +8,11 @@ struct WorkoutDetailView: View {
     let workspace: WorkspaceModel
     let clock: any AppClock
     var embedded = false
-    var editingContext: WorkoutEditorModel? = nil
     var onOpenEditor: ((WorkoutEditorModel) -> Void)? = nil
     var onRecordRemoved: (() -> Void)? = nil
     @Environment(\.dismiss) private var dismiss
     @State private var editor: WorkoutEditorModel?
     @State private var deleting = false
-    @State private var conflict = false
     @State private var copying = false
     @State private var error: String?
     private var workout: Workout? { workspace.snapshot?.activeWorkouts.first { $0.id == id } }
@@ -38,17 +36,17 @@ struct WorkoutDetailView: View {
                         Text(current?.kcal.map { "\($0) kcal" } ?? "待估算")
                             .font(PixelTheme.font(24, relativeTo: .title2)).monospacedDigit()
                             .accessibilityLabel("运动净消耗，" + (current?.kcal.map { "\($0) kcal" } ?? "待估算"))
-                        Text("运动净消耗 · 估算").font(.footnote).foregroundStyle(.secondary)
-                        if embedded { Text("已保存的训练记录").font(.footnote).foregroundStyle(.secondary) }
+                        Text("运动净消耗 · 估算").font(.footnote).foregroundStyle(PixelTheme.subtle)
+                        if embedded { Text("已保存的训练记录").font(.footnote).foregroundStyle(PixelTheme.subtle) }
                     }
                     ForEach(workout.exercises) { exercise in
                         Section(exercise.name) {
                             if exercise.kind == .weighted && !exercise.weightConvention.isEmpty {
-                                Text(exercise.weightConvention).font(.footnote).foregroundStyle(.secondary)
+                                Text(exercise.weightConvention).font(.footnote).foregroundStyle(PixelTheme.subtle)
                             }
                             ForEach(Array(exercise.sets.enumerated()), id: \.element.id) { index, set in
                                 HStack(alignment: .firstTextBaseline) {
-                                    Text("\(index + 1)").font(.footnote).foregroundStyle(.secondary)
+                                    Text("\(index + 1)").font(.footnote).foregroundStyle(PixelTheme.subtle)
                                     Spacer()
                                     Text(setSummary(set, exercise: exercise)).monospacedDigit()
                                 }
@@ -68,11 +66,11 @@ struct WorkoutDetailView: View {
                                 ForEach(workout.energyHistory.reversed()) { energy in
                                     DisclosureGroup {
                                         Text(energy.inputDescription)
-                                        Text(energy.intensity.title + " · " + energy.algorithmVersion).font(.footnote).foregroundStyle(.secondary)
+                                        Text(energy.intensity.title + " · " + energy.algorithmVersion).font(.footnote).foregroundStyle(PixelTheme.subtle)
                                     } label: {
                                         VStack(alignment: .leading, spacing: 4) {
                                             Text(energy.kcal.map { "\($0) kcal" } ?? "待估算")
-                                            Text(energy.id == workout.currentEnergyID ? "当前估算" : "历史估算").font(.footnote).foregroundStyle(.secondary)
+                                            Text(energy.id == workout.currentEnergyID ? "当前估算" : "历史估算").font(.footnote).foregroundStyle(PixelTheme.subtle)
                                         }
                                     }
                                 }
@@ -97,11 +95,7 @@ struct WorkoutDetailView: View {
                 .confirmationDialog("将这次训练移到回收站？", isPresented: $deleting, titleVisibility: .visible) {
                     Button("确认删除", role: .destructive) { Task { await removeRecord() } }
                 } message: { Text(embedded ? "本次尚未保存的修改将放弃。正式记录可在回收站恢复。" : "正式记录可在回收站恢复。") }
-                .confirmationDialog(embedded ? "当前训练有编辑草稿" : "已有进行中的训练草稿", isPresented: $conflict, titleVisibility: .visible) {
-                    Button(embedded ? "返回当前修改" : "继续已有草稿") { Task { await resumeExisting() } }
-                    Button(embedded ? "放弃当前修改并复制" : "放弃旧草稿并继续", role: .destructive) { Task { await discardExisting() } }
-                    Button("取消", role: .cancel) { if embedded { dismiss() } }
-                } message: { Text(embedded ? "复制需要结束当前编辑。放弃后仅丢弃草稿中的修改，已保存的训练保持原值。" : "每次只保留一个活动训练，已有草稿不会被覆盖。") }
+
     }
     private func setSummary(_ set: WorkoutSet, exercise: Exercise) -> String {
         let weight = exercise.kind == .bodyweight ? "自重" : set.weightKG.map { $0.description + " kg" } ?? "— kg"
@@ -111,8 +105,7 @@ struct WorkoutDetailView: View {
     private func open() async {
         do {
             presentEditor(try await makeEditor())
-        } catch WorkoutEditorError.activeDraft { conflict = true }
-        catch { self.error = error.userMessage }
+        } catch { self.error = error.userMessage }
     }
     private func makeEditor() async throws -> WorkoutEditorModel {
         guard let workout else { throw DomainError.invalidValue("这条训练已移走，请返回记录页。") }
@@ -123,36 +116,9 @@ struct WorkoutDetailView: View {
         if let onOpenEditor { onOpenEditor(next) }
         else { editor = next }
     }
-    private func resumeExisting() async {
-        if embedded { dismiss(); return }
-        do { editor = try await WorkoutEditorModel.open(repository: workspace.activeRepository(), clock: clock, day: LocalDay(clock.now, timeZone: clock.timeZone)) }
-        catch { self.error = error.userMessage }
-    }
-    private func discardExisting() async {
-        var discardedEditingContext = false
-        do {
-            let repository = try await workspace.activeRepository()
-            if let editingContext {
-                guard await editingContext.discard() else { error = editingContext.error; return }
-                discardedEditingContext = true
-            } else if let draft = try await repository.snapshot().drafts.first(where: { $0.content.kind == .workout }) {
-                try await repository.discardDraft(id: draft.id, at: clock.now, operationID: UUID())
-            }
-            try await workspace.refresh()
-            presentEditor(try await makeEditor())
-        } catch {
-            if discardedEditingContext {
-                workspace.errorMessage = "当前修改已放弃，但未能打开复制训练。已保存的训练仍保留，请重新打开后再试。"
-                if let onRecordRemoved { onRecordRemoved() }
-                else { dismiss() }
-            } else { self.error = error.userMessage }
-        }
-    }
-
     private func removeRecord() async {
         await workspace.trash(kind: .workout, id: id)
         guard workspace.errorMessage == nil else { error = workspace.errorMessage; return }
-        if let editingContext { _ = await editingContext.discard() }
         if let onRecordRemoved { onRecordRemoved() }
         else { dismiss() }
     }

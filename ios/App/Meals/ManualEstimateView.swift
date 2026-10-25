@@ -94,7 +94,7 @@ struct ManualEstimateView: View {
                     DisclosureGroup("填写说明") {
                         Text("可只填整餐热量，也可添加食物分项；克数可留空。")
                         Text("已知原克数时，修改克数会按比例换算热量；直接修改热量会设定新的比例基准。")
-                            .font(.footnote).foregroundStyle(.secondary)
+                            .font(.footnote).foregroundStyle(PixelTheme.subtle)
                     }
                 }
             }

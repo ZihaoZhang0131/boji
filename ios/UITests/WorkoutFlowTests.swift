@@ -2,7 +2,7 @@ import XCTest
 
 @MainActor final class WorkoutFlowTests: XCTestCase {
     override func setUpWithError() throws { continueAfterFailure = false }
-    func testWorkoutRestartsFinishesEditsCopiesAndRestores() {
+    func testWorkoutSavesRestartsEditsCopiesAndRestores() {
         let app = XCUIApplication(); app.launchArguments = ["--ui-test-store", UUID().uuidString]; app.launch()
         app.tabBars.buttons["我的"].tap(); app.buttons["profile.link"].tap()
         app.buttons["profile.sex"].tap(); app.buttons["男性公式"].tap()
@@ -17,15 +17,12 @@ import XCTest
         app.tabBars.buttons["记录"].tap()
         app.buttons["workout.new"].tap()
         app.textFields["workout.name"].tap(); app.textFields["workout.name"].typeText("Pull day")
-        reveal(app.buttons["常用动作"], in: app); app.buttons["常用动作"].tap(); app.buttons["引体向上（自重）"].tap()
+        reveal(app.buttons["workout.addExercise"], in: app); app.buttons["workout.addExercise"].tap(); app.buttons["引体向上"].tap()
         let reps = app.textFields["第 1 组次数"]; reveal(reps, in: app); reps.tap(); reps.typeText("8")
-        reveal(app.buttons["确认这组完成"], in: app); app.buttons["确认这组完成"].tap()
-        app.buttons["收起"].tap(); app.terminate(); app.launch()
-        app.buttons["workout.new"].tap()
-        XCTAssertEqual(app.textFields["workout.name"].value as? String, "Pull day")
         let minutes = app.textFields["实际时长（分钟，可留空）"]
         reveal(minutes, in: app); minutes.tap(); minutes.typeText("30")
-        reveal(app.buttons["workout.finish"], in: app); app.buttons["workout.finish"].tap()
+        reveal(app.buttons["workout.save"], in: app); app.buttons["workout.save"].tap()
+        app.terminate(); app.launch()
         let row = app.buttons.matching(NSPredicate(format: "identifier BEGINSWITH %@", "workout.row.")).firstMatch
         XCTAssertTrue(row.waitForExistence(timeout: 5)); row.tap()
         XCTAssertTrue(app.textFields["workout.name"].waitForExistence(timeout: 5))
@@ -36,7 +33,7 @@ import XCTest
         reveal(firstEnergy, in: app)
         let originalKcal = firstEnergy.label
         XCTAssertTrue(originalKcal.hasSuffix(" kcal"))
-        app.buttons["收起"].tap()
+        app.buttons["workout.close"].tap()
         app.tabBars.buttons["我的"].tap(); app.buttons["profile.link"].tap()
         let weight = app.textFields["profile.field.体重（kg）"]
         reveal(weight, in: app); weight.tap(); weight.typeText(String(repeating: XCUIKeyboardKey.delete.rawValue, count: 2) + "80")
@@ -47,7 +44,7 @@ import XCTest
         XCTAssertEqual(firstEnergy.label, originalKcal)
         let name = app.textFields["workout.name"]
         revealAbove(name, in: app); name.tap(); name.typeText(" revised")
-        reveal(app.buttons["workout.finish"], in: app); app.buttons["workout.finish"].tap()
+        reveal(app.buttons["workout.save"], in: app); app.buttons["workout.save"].tap()
         XCTAssertTrue(row.waitForExistence(timeout: 5))
         XCTAssertEqual(app.buttons.matching(NSPredicate(format: "identifier BEGINSWITH %@", "workout.row.")).count, 1)
         row.tap()
@@ -57,25 +54,19 @@ import XCTest
         if app.buttons["收起键盘"].exists { app.buttons["收起键盘"].tap() }
         app.buttons["workout.details"].tap()
         reveal(app.buttons["复制为本次训练"], in: app); app.buttons["复制为本次训练"].tap()
-        XCTAssertTrue(app.buttons["返回当前修改"].waitForExistence(timeout: 5))
-        app.buttons["返回当前修改"].tap()
-        XCTAssertEqual(name.value as? String, "Pull day revised pending")
-        app.buttons["workout.details"].tap()
-        reveal(app.buttons["复制为本次训练"], in: app); app.buttons["复制为本次训练"].tap()
-        app.buttons["放弃当前修改并复制"].tap()
         let copiedName = XCTNSPredicateExpectation(predicate: NSPredicate(format: "value == %@", "Pull day revised"), object: name)
         XCTAssertEqual(XCTWaiter.wait(for: [copiedName], timeout: 5), .completed)
         XCTAssertEqual(name.value as? String, "Pull day revised")
-        XCTAssertTrue(app.staticTexts["已确认 0 组 · 结束前均为草稿"].exists)
-        reveal(app.buttons["放弃训练草稿"], in: app); app.buttons["放弃训练草稿"].tap(); app.buttons["确认放弃"].tap()
+        XCTAssertFalse(app.buttons["确认这组完成"].exists)
+        app.buttons["workout.close"].tap()
         XCTAssertTrue(row.waitForExistence(timeout: 5)); row.tap()
         app.buttons["workout.details"].tap()
         reveal(app.buttons["移到回收站"], in: app); app.buttons["移到回收站"].tap(); app.buttons["确认删除"].tap()
         let returned = XCTNSPredicateExpectation(predicate: NSPredicate(format: "hittable == true"), object: app.buttons["workout.new"])
         XCTAssertEqual(XCTWaiter.wait(for: [returned], timeout: 10), .completed)
-        app.windows.firstMatch.coordinate(withNormalizedOffset: CGVector(dx: 0.75, dy: 0.92)).tap()
-        XCTAssertTrue(app.buttons["回收站"].waitForExistence(timeout: 5))
-        app.buttons["回收站"].tap(); app.buttons["恢复"].tap()
+        showDataManagement(in: app)
+        XCTAssertTrue(app.buttons["trash.link"].waitForExistence(timeout: 5))
+        app.buttons["trash.link"].tap(); app.buttons["恢复"].tap()
         XCTAssertTrue(app.staticTexts["trash.empty"].waitForExistence(timeout: 5))
         app.tabBars.buttons["记录"].tap()
         XCTAssertEqual(app.buttons.matching(NSPredicate(format: "identifier BEGINSWITH %@", "workout.row.")).count, 1)

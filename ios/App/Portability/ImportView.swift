@@ -26,7 +26,7 @@ struct ImportView: View {
         Form {
             Section {
                 Text("选择 .boji 资料包或原型版本 1 JSON，预览后再导入。不会恢复外部令牌、发送授权或识别任务。")
-                    .font(.footnote).foregroundStyle(.secondary)
+                    .font(.footnote).foregroundStyle(PixelTheme.subtle)
                 Button(busy ? "正在下载、校验或导入" : "选择资料包") { showPicker = true }.frame(minHeight:44).disabled(busy || workspace.isDemo).accessibilityIdentifier("import.select")
                 if let error { Text(error).accessibilityIdentifier("import.error") }
                 if let message { Text(message).accessibilityIdentifier("import.result") }
@@ -49,7 +49,7 @@ struct ImportView: View {
                 Section("导入预览") {
                     Text("新增 \(preview.added) · 替换 \(preview.replaced) · 相同 \(preview.duplicates) · 跳过 \(preview.skipped)").accessibilityIdentifier("import.preview")
                     Text("已排除 \(preview.excludedDemo) 项演示内容。")
-                        .font(.footnote).foregroundStyle(.secondary)
+                        .font(.footnote).foregroundStyle(PixelTheme.subtle)
                     ForEach(preview.notices,id:\.self) { Text($0) }
                     if !preview.conflicts.isEmpty {
                         Picker("内容冲突",selection:$policy) {
@@ -66,7 +66,7 @@ struct ImportView: View {
                             } else { Text(conflict.title) }
                         }
                         Text("同日身体资料、重叠阶段或草稿会产生冲突。旧包中的已删除记录需单独选择恢复；采用导入版本不会撤销永久删除。")
-                            .font(.footnote).foregroundStyle(.secondary)
+                            .font(.footnote).foregroundStyle(PixelTheme.subtle)
                     }
                     Button(preview.hasChanges ? "确认导入预览中的变更" : "没有需要导入的变更") { confirming = true }
                         .frame(minHeight:44).disabled(busy || !preview.hasChanges).accessibilityIdentifier("import.apply")
@@ -74,7 +74,7 @@ struct ImportView: View {
             }
             Section("恢复") {
                 Text("恢复前请先导出当前资料。恢复不会合并导入后的新记录，原版本仍保留可回退。")
-                    .font(.footnote).foregroundStyle(.secondary)
+                    .font(.footnote).foregroundStyle(PixelTheme.subtle)
                 Button("恢复上次导入或升级前资料") { confirmingRestore = true }
                     .frame(minHeight:44).disabled(busy || workspace.isDemo)
             }

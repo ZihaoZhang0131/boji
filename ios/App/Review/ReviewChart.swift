@@ -1,131 +1,86 @@
 import SwiftUI
 import BojiDomain
 
-/// Bars use solid / diagonal fill; lines connect only adjacent days with known expenditure.
-/// Every day also has a 44-point selection target and a numeric accessibility description.
 struct ReviewChart: View {
     let days: [DayReview]
-    let selected: LocalDay
-    let onSelect: (LocalDay) -> Void
-    private let column: CGFloat = 48
-
-    private var hasKnownData: Bool {
-        days.contains { $0.mealCount > $0.pendingMeals || $0.totalBurnKcal != nil }
-    }
+    let metric: ReviewPresentation.Metric
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
+    @ScaledMetric(relativeTo: .caption) private var axisWidth: CGFloat = 42
+    @ScaledMetric(relativeTo: .caption) private var plotHeight: CGFloat = 160
+    private var values: [Double?] { days.map { metric.value($0) } }
+    private var runs: [[ReviewPresentation.Point]] { ReviewPresentation.runs(values) }
+    private var maximum: Double { ReviewPresentation.ceiling(values) }
+    private var title: String { (days.contains(where: { metric.pending($0) }) ? "已知" : "") + metric.title }
 
     var body: some View {
-        if hasKnownData {
-            populatedChart
-        } else {
-            VStack(alignment: .leading, spacing: 12) {
-                Text("补充热量后显示趋势")
-                    .font(PixelTheme.font(13, relativeTo: .footnote))
-                    .foregroundStyle(.secondary)
-                ScrollView(.horizontal) {
-                    HStack(spacing: 0) {
-                        ForEach(days) { day in
-                            Button { onSelect(day.day) } label: {
-                                Text(String(day.day.day))
-                                    .font(PixelTheme.font(16))
-                                    .monospacedDigit()
-                                    .frame(minWidth: column, minHeight: 44)
-                                    .background(day.day == selected ? PixelTheme.surface : Color.clear,
-                                                in: RoundedRectangle(cornerRadius: 12, style: .continuous))
-                                    .contentShape(Rectangle())
+        VStack(alignment: .leading, spacing: 16) {
+            HStack(alignment: .firstTextBaseline) {
+                Text(title).font(.headline).fixedSize(horizontal: false, vertical: true)
+                Spacer(minLength: 8)
+                if !runs.isEmpty { Text("kcal").font(.caption).foregroundStyle(PixelTheme.subtle) }
+            }
+            if runs.isEmpty {
+                Text("暂无热量数据").font(.subheadline).foregroundStyle(PixelTheme.subtle).padding(.vertical, 12)
+                    .accessibilityIdentifier("review.empty." + metric.rawValue)
+            } else {
+                VStack(spacing: 8) {
+                    HStack(spacing: 4) {
+                        VStack(alignment: .leading) {
+                            axis(maximum); Spacer(); axis(maximum / 2); Spacer(); axis(0)
+                        }.frame(width: axisWidth, height: plotHeight).accessibilityHidden(true)
+                        GeometryReader { geometry in
+                            let height = geometry.size.height
+                            let point: (ReviewPresentation.Point) -> CGPoint = { p in
+                                CGPoint(x: 4 + p.x / Double(max(1, days.count - 1)) * max(1, geometry.size.width - 8),
+                                        y: height - 4 - p.y / maximum * (height - 8))
                             }
-                            .buttonStyle(.plain)
-                            .accessibilityIdentifier("review.day." + day.day.description)
-                            .accessibilityLabel(day.day.description + "，" + description(day))
-                            .accessibilityAddTraits(day.day == selected ? .isSelected : [])
+                            ZStack {
+                                Path { path in path.move(to: CGPoint(x: 4, y: height - 4)); path.addLine(to: CGPoint(x: geometry.size.width - 4, y: height - 4)) }
+                                    .stroke(Color.primary.opacity(0.12), lineWidth: 1)
+                                Path { path in
+                                    for run in runs where run.count > 1 {
+                                        path.move(to: point(run[0]))
+                                        if run.count == 2 { path.addLine(to: point(run[1])) }
+                                        else { for curve in ReviewPresentation.curves(run) { path.addCurve(to: point(curve.end), control1: point(curve.c1), control2: point(curve.c2)) } }
+                                    }
+                                }.stroke(Color.primary, style: StrokeStyle(lineWidth: 2, lineCap: .round, lineJoin: .round))
+                                Path { path in
+                                    for sample in runs.flatMap({ $0 }) {
+                                        let p = point(sample)
+                                        path.addEllipse(in: CGRect(x: p.x - 2.7, y: p.y - 2.7, width: 5.4, height: 5.4))
+                                    }
+                                }.fill(Color.primary)
+                            }
+                        }.frame(height: plotHeight).accessibilityHidden(true)
+                    }
+                    HStack(alignment: .top) {
+                        ForEach(labelIndices, id: \.self) { index in
+                            if index != labelIndices.first { Spacer(minLength: 8) }
+                            Text("\(days[index].day.month)/\(days[index].day.day)")
+                                .font(.caption).monospacedDigit().fixedSize(horizontal: true, vertical: false)
                         }
+                    }.padding(.leading, dynamicTypeSize.isAccessibilitySize ? 0 : axisWidth + 4)
+                        .foregroundStyle(PixelTheme.subtle).accessibilityHidden(true)
+                }
+                .accessibilityElement(children: .contain)
+                .accessibilityLabel(title + "趋势")
+                .accessibilityIdentifier("review.chart." + metric.rawValue)
+                .accessibilityChildren {
+                    ForEach(days) { day in
+                        Text(accessibilityDescription(day))
+                            .accessibilityIdentifier("review.value." + metric.rawValue + "." + day.day.description)
                     }
                 }
-                .scrollIndicators(.hidden)
-                .accessibilityIdentifier("review.chart")
             }
         }
     }
-
-    @ViewBuilder private var populatedChart: some View {
-        ScrollView(.horizontal) {
-            VStack(spacing: 0) {
-                ZStack(alignment: .bottomLeading) {
-                    Canvas { context, size in draw(context: context, size: size) }
-                        .accessibilityHidden(true)
-                    HStack(spacing: 0) {
-                        ForEach(days) { day in
-                            Button { onSelect(day.day) } label: { Color.clear.frame(width: column, height: 180).contentShape(Rectangle()) }
-                                .buttonStyle(.plain)
-                                .accessibilityIdentifier("review.day." + day.day.description)
-                                .accessibilityLabel(day.day.description + "，" + description(day))
-                                .accessibilityAddTraits(day.day == selected ? .isSelected : [])
-                        }
-                    }
-                }.frame(width: column * CGFloat(days.count), height: 180)
-                HStack(spacing: 0) {
-                    ForEach(days) { day in Text(String(day.day.day)).font(PixelTheme.font(12)).frame(width: column, height: 32) }
-                }.accessibilityHidden(true)
-            }
-        }
-        .scrollIndicators(.hidden)
-        .accessibilityIdentifier("review.chart")
-        ViewThatFits(in: .horizontal) {
-            HStack(spacing: 16) { legend }
-            VStack(alignment: .leading, spacing: 8) { legend }
-        }
-        .font(PixelTheme.font(12, relativeTo: .caption))
-        .foregroundStyle(.secondary)
-        .accessibilityElement(children: .ignore)
-        .accessibilityLabel("实心：完整摄入；斜线：未完整摄入；折线：估算总消耗，未知处断开。单位 kcal。")
+    private var labelIndices: [Int] { days.isEmpty ? [] : dynamicTypeSize.isAccessibilitySize ? [0, days.count - 1] : [0, (days.count - 1) / 2, days.count - 1] }
+    private func accessibilityDescription(_ day: DayReview) -> String {
+        let value = metric.value(day).map { String(Int($0.rounded())) + " kcal" } ?? "无有效热量"
+        let name = (metric.pending(day) ? "已知" : "") + metric.title
+        return day.day.description + "，" + name + "，" + value
     }
-
-    @ViewBuilder private var legend: some View {
-        Label("摄入", systemImage: "rectangle.fill")
-        Label("未记全", systemImage: "rectangle.lefthalf.inset.filled")
-        Label("消耗 · kcal", systemImage: "line.diagonal")
-    }
-    private func description(_ day: DayReview) -> String {
-        let burn = day.totalBurnKcal.map(String.init) ?? "未知"
-        let intake: String
-        if day.mealCount == 0 { intake = "无饮食记录" }
-        else if day.pendingMeals == day.mealCount { intake = "摄入待估算" }
-        else { intake = "已知摄入 \(day.knownIntakeKcal.description)" }
-        return intake + "，消耗 \(burn)，" + (day.complete ? "完整" : "未完整")
-    }
-    private func draw(context: GraphicsContext, size: CGSize) {
-        let maximum = max(1.0, days.map { max(NSDecimalNumber(decimal: $0.knownIntakeKcal).doubleValue, Double($0.totalBurnKcal ?? 0)) }.max() ?? 1)
-        func y(_ value: Double) -> CGFloat { size.height - 12 - CGFloat(value / maximum) * (size.height - 24) }
-        var baseline = Path()
-        baseline.move(to: CGPoint(x: 0, y: size.height - 12))
-        baseline.addLine(to: CGPoint(x: size.width, y: size.height - 12))
-        context.stroke(baseline, with: .color(.primary.opacity(0.12)), lineWidth: 1)
-        for (index, day) in days.enumerated() {
-            let x = column * CGFloat(index) + column / 2
-            if day.day == selected {
-                context.fill(Path(roundedRect: CGRect(x: x - 21, y: 0, width: 42, height: size.height), cornerRadius: 8), with: .color(.primary.opacity(0.06)))
-            }
-            let intake = NSDecimalNumber(decimal: day.knownIntakeKcal).doubleValue
-            let rect = CGRect(x: x - 12, y: y(intake), width: 24, height: max(1, size.height - 12 - y(intake)))
-            if day.mealCount > day.pendingMeals {
-                if day.complete { context.fill(Path(rect), with: .foreground) }
-                else {
-                    var clipped = context; clipped.clip(to: Path(rect))
-                    var stripes = Path()
-                    for start in stride(from: rect.minY - 24, through: rect.maxY + 24, by: 6) {
-                        stripes.move(to: CGPoint(x: rect.minX, y: start)); stripes.addLine(to: CGPoint(x: rect.maxX, y: start + 24))
-                    }
-                    clipped.stroke(stripes, with: .foreground, lineWidth: 1)
-                    context.stroke(Path(rect), with: .foreground, lineWidth: 1)
-                }
-            }
-            if let burn = day.totalBurnKcal {
-                let point = CGPoint(x: x, y: y(Double(burn)))
-                context.fill(Path(ellipseIn: CGRect(x: point.x - 3, y: point.y - 3, width: 6, height: 6)), with: .foreground)
-                if index > 0, let previous = days[index - 1].totalBurnKcal {
-                    var line = Path(); line.move(to: CGPoint(x: x - column, y: y(Double(previous)))); line.addLine(to: point)
-                    context.stroke(line, with: .foreground, style: StrokeStyle(lineWidth: 2, dash: [4, 3]))
-                }
-            }
-        }
+    private func axis(_ value: Double) -> some View {
+        Text(verbatim: String(Int(value.rounded()))).font(.caption2).monospacedDigit().fixedSize(horizontal: true, vertical: false).foregroundStyle(PixelTheme.subtle)
     }
 }

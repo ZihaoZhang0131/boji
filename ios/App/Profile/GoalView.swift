@@ -35,7 +35,7 @@ struct GoalView: View {
                 TextField("阶段备注", text: $note, axis: .vertical).lineLimit(2...6).accessibilityLabel("阶段备注")
                     .focused($noteFocused)
                 Text("记录当前阶段，不自动设定摄入量。")
-                    .font(.footnote).foregroundStyle(.secondary)
+                    .font(.footnote).foregroundStyle(PixelTheme.subtle)
             }
             if let error { Text(error) }
             Button(saving ? "正在保存" : "保存阶段") { Task { await save() } }
@@ -47,13 +47,13 @@ struct GoalView: View {
                             VStack(alignment: .leading, spacing: 4) {
                                 Text(goal.goal.title)
                                 Text(goal.startDay.description + " — " + (goal.endDay.map { $0.description + " 前" } ?? "至今"))
-                                    .font(.footnote).foregroundStyle(.secondary)
+                                    .font(.footnote).foregroundStyle(PixelTheme.subtle)
                                 if !goal.note.isEmpty { Text(goal.note).font(.footnote) }
                             }
                         }
                     } else { Text("还没有阶段目标") }
                     Text("仅改备注不会新增阶段。")
-                        .font(.footnote).foregroundStyle(.secondary)
+                        .font(.footnote).foregroundStyle(PixelTheme.subtle)
                 }
             }
         }

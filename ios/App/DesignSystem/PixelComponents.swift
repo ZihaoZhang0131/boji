@@ -21,11 +21,12 @@ extension View {
 enum PixelTheme {
     static let fontName = "Fusion-Pixel-12px-Prop-zh-Hans-Regular"
     static let canvas = Color(uiColor: .systemBackground)
-    static let surface = Color(uiColor: .secondarySystemBackground)
-    static let subtle = Color(uiColor: .secondaryLabel)
+    static let surface = Color(uiColor: UIColor { $0.userInterfaceStyle == .dark ? UIColor(white: 0.14, alpha: 1) : UIColor(white: 0.95, alpha: 1) })
+    static let subtle = Color(uiColor: UIColor { $0.userInterfaceStyle == .dark ? UIColor(white: 0.68, alpha: 1) : UIColor(white: 0.4, alpha: 1) })
     static let radius: CGFloat = 16
     static func font(_ size: CGFloat = 16, relativeTo style: Font.TextStyle = .body) -> Font {
-        .custom(fontName, size: size, relativeTo: style)
+        .system(style == .body ? (size < 14 ? .footnote : size < 16 ? .subheadline : size < 20 ? .body : size < 24 ? .title3 : .title2) : style)
+            .weight(size >= 20 ? .semibold : .regular)
     }
 }
 
@@ -101,14 +102,19 @@ struct RecordCard: View {
             if let photoID = meal.photoIDs.first {
                 MealThumbnail(photoID: photoID, workspace: workspace)
             } else {
-                Image(systemName: "fork.knife")
-                    .font(.system(size: 44, weight: .light))
-                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                Text(meal.note.isEmpty ? (meal.slot ?? "饮食") : meal.note)
+                    .font(.headline).lineLimit(3)
+                    .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .leading)
+                    .padding(16)
             }
         case .workout(let workout):
-            Image(systemName: workoutSymbol(workout))
-                .font(.system(size: 54, weight: .light))
-                .frame(maxWidth: .infinity, maxHeight: .infinity)
+            VStack(alignment: .leading, spacing: 8) {
+                Text(workout.name.isEmpty ? "训练" : workout.name).font(.headline).lineLimit(3)
+                Text("\(workout.exercises.flatMap(\.sets).filter(\.completed).count) 组完成")
+                    .font(.footnote).foregroundStyle(PixelTheme.subtle)
+            }
+            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .leading)
+            .padding(16)
         }
     }
 
@@ -143,12 +149,7 @@ struct RecordCard: View {
         return event.time.localDay.description + " " + event.time.displayTime + "，" + metadata + "，" + calories
     }
 
-    private func workoutSymbol(_ workout: Workout) -> String {
-        let names = ([workout.name] + workout.exercises.map(\.name)).joined(separator: " ").lowercased()
-        if ["腿", "下肢", "深蹲", "squat", "leg"].contains(where: { names.contains($0) }) { return "figure.strengthtraining.functional" }
-        if ["核心", "腹", "core", "plank"].contains(where: { names.contains($0) }) { return "figure.core.training" }
-        return "figure.strengthtraining.traditional"
-    }
+
 }
 
 struct MealThumbnail: View {
@@ -181,35 +182,13 @@ struct MealThumbnail: View {
     }
 }
 
-/// Original 12 × 12 monochrome notebook mark; the visual size does not set the hit target.
-struct PixelNotebook: View {
-    private let rows = [
-        "001111111100", "011000000110", "011010100110", "011000000110",
-        "011011110110", "011000000110", "011011110110", "011000000110",
-        "011010000110", "011000000110", "001111111100", "000000000000"
-    ]
-    var body: some View {
-        Canvas { context, size in
-            let unit = min(size.width, size.height) / 12
-            for (y, row) in rows.enumerated() {
-                for (x, character) in row.enumerated() where character == "1" {
-                    context.fill(Path(CGRect(x: CGFloat(x) * unit, y: CGFloat(y) * unit, width: unit, height: unit)), with: .foreground)
-                }
-            }
-        }
-        .frame(width: 48, height: 48)
-        .accessibilityHidden(true)
-    }
-}
-
 struct PixelEmptyState: View {
     let title: String
     let message: String
     var body: some View {
         VStack(spacing: 20) {
-            PixelNotebook()
             Text(title).font(PixelTheme.font(24, relativeTo: .title2))
-            Text(message).foregroundStyle(.secondary)
+            Text(message).foregroundStyle(PixelTheme.subtle)
         }
         .font(PixelTheme.font())
         .multilineTextAlignment(.center)
@@ -233,4 +212,48 @@ struct PixelEmptyState: View {
 #Preview("像素组件 · 深色") {
     PixelEmptyState(title: "回顾从记录开始", message: "还没有饮食和训练记录。")
         .preferredColorScheme(.dark)
+}
+
+struct RecordingTimePicker: View {
+    @Binding var selection: Date
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
+    var body: some View {
+        if dynamicTypeSize.isAccessibilitySize {
+            VStack(alignment: .leading, spacing: 8) {
+                Text("时间").foregroundStyle(PixelTheme.subtle)
+                // Compact date controls have a fixed intrinsic width; separate them on small screens.
+                DatePicker("日期", selection: $selection, displayedComponents: .date)
+                    .labelsHidden().dynamicTypeSize(...DynamicTypeSize.xxxLarge)
+                DatePicker("时间", selection: $selection, displayedComponents: .hourAndMinute)
+                    .labelsHidden().dynamicTypeSize(...DynamicTypeSize.xxxLarge)
+            }.frame(maxWidth: .infinity, alignment: .leading)
+        } else {
+            DatePicker("时间", selection: $selection)
+                .foregroundStyle(PixelTheme.subtle)
+        }
+    }
+}
+
+struct RecordingSaveBar: View {
+    let disabled: Bool
+    let identifier: String
+    let action: () -> Void
+    var body: some View {
+        Button(action: action) {
+            Text("保存").font(.body.weight(.semibold))
+                .frame(maxWidth: .infinity, minHeight: 50)
+                .background(Color.primary, in: RoundedRectangle(cornerRadius: 12))
+                .foregroundStyle(PixelTheme.canvas)
+        }
+        .buttonStyle(.plain).disabled(disabled).opacity(disabled ? 0.5 : 1)
+        .accessibilityIdentifier(identifier)
+        .padding(.horizontal, 24).padding(.top, 12).padding(.bottom, 12)
+        .background(PixelTheme.canvas)
+    }
+}
+
+extension View {
+    func recordingField() -> some View {
+        padding(14).background(PixelTheme.surface, in: RoundedRectangle(cornerRadius: 12))
+    }
 }

@@ -17,7 +17,7 @@ struct AISettingsView: View {
                 SecureField("千问 API Key（留空沿用已存密钥）", text: $token).textInputAutocapitalization(.never).autocorrectionDisabled().focused($focused)
                     .accessibilityIdentifier("ai.token")
                 Text("密钥保存在本机 Keychain，不进入导出或备份。记录与人工热量可离线使用。")
-                    .font(.footnote).foregroundStyle(.secondary)
+                    .font(.footnote).foregroundStyle(PixelTheme.subtle)
                 Button(connecting ? "正在保存" : "保存密钥并查看授权") {
                     focused = false; connecting = true
                     Task { if await workspace.connectAI(urlText: QwenDirectClient.endpoint.absoluteString, token: token) { token = "" }; connecting = false }
@@ -39,7 +39,7 @@ struct AISettingsView: View {
                     Text(policy.feePayer)
                     Text("每 UTC 日最多 \(policy.dailyAttempts) 次尝试，不是金额预算。结果未知时不自动重试；主动重试可能再次计费。")
                         .font(.footnote)
-                    Text("政策版本：" + policy.version).font(.footnote).foregroundStyle(.secondary)
+                    Text("政策版本：" + policy.version).font(.footnote).foregroundStyle(PixelTheme.subtle)
                     if settings.acceptedPolicy == policy.version { Text("已授权当前政策").accessibilityIdentifier("ai.authorized") }
                     else {
                         Text(policy.available ? "尚未授权，照片和备注仅保存在本机。" : "模型尚未配置，仍可记录和人工填写热量。")
@@ -50,10 +50,10 @@ struct AISettingsView: View {
             Section {
                 Toggle("保存带照片餐食后自动估算", isOn: Binding(get: { settings.automatic }, set: { value in Task { await workspace.setAutomaticAI(value) } }))
                 Text("开关不能代替授权。关闭后停止新自动任务，仍可在有效授权下手动识别。")
-                    .font(.footnote).foregroundStyle(.secondary)
+                    .font(.footnote).foregroundStyle(PixelTheme.subtle)
                 DisclosureGroup("离线识别说明") {
                     Text("离线任务会等到联网且 App 获得执行机会。")
-                        .font(.footnote).foregroundStyle(.secondary)
+                        .font(.footnote).foregroundStyle(PixelTheme.subtle)
                 }
                 if settings.serviceURL != nil {
                     Button("撤回资料发送授权", role: .destructive) { revoking = true }.frame(minHeight: 44)

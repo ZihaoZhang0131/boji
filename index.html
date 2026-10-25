@@ -10,7 +10,10 @@
   <link rel="stylesheet" href="typography.css">
   <link rel="stylesheet" href="energy.css">
   <link rel="stylesheet" href="pixel-font.css">
-  <link rel="stylesheet" href="pixel.css?v=20261020-minimal-system-final">
+  <link rel="stylesheet" href="pixel.css?v=20261025-direct-meal-editor">
+  <link rel="stylesheet" href="home.css?v=20261025-direct-meal-editor">
+  <link rel="stylesheet" href="editor.css?v=20261025-direct-meal-editor">
+  <link rel="stylesheet" href="review.css?v=20261025-direct-meal-editor">
 </head>
 <body>
   <aside class="studio">
@@ -23,7 +26,7 @@
       <button data-scene="workout">记训练</button>
       <button data-scene="review">回顾</button>
       <button data-scene="library">我的</button>
-      <button data-scene="profile">个人信息</button>
+      <button data-scene="profile">身体资料</button>
     </nav>
     <div class="studio-heading minor">状态预览</div>
     <div class="state-switches"><button data-state="normal" class="selected">有记录</button><button data-state="empty">空白一天</button><button data-state="offline">离线</button></div>
@@ -31,7 +34,7 @@
     <div class="state-switches"><button data-ai-demo="ready">识别结果</button><button data-ai-demo="failed">识别失败</button></div>
     <div class="studio-heading minor">外观</div><div class="state-switches"><button data-theme="light" class="selected">浅色</button><button data-theme="dark">深色</button></div>
     <a class="spec-link" href="energy-spec.html" target="_blank">热量功能设计说明</a>
-    <footer>v0.6 · 黑白像素版<br>AI 为演示，未调用接口；记录保存在本机。</footer>
+    <footer>黑白灰 · 精简 MVP<br>AI 为演示，未调用接口；记录保存在本机。</footer>
   </aside>
 
   <main class="stage">
@@ -51,9 +54,12 @@
     <p id="note-description">留下照片和事实，其余交给日后的自己。</p>
     <div class="try-note"><span>试一试</span><p id="try-copy">记一餐，或记一组。</p></div>
   </aside>
-  <script src="app.js?v=20261020-minimal-system-final"></script>
-  <script src="redesign.js?v=20261020-minimal-system-final"></script>
-  <script src="energy.js?v=20261020-minimal-system-final"></script>
-  <script src="pixel.js?v=20261020-minimal-system-final"></script>
+  <script src="app.js?v=20261025-direct-meal-editor"></script>
+  <script src="redesign.js?v=20261025-direct-meal-editor"></script>
+  <script src="energy.js?v=20261025-direct-meal-editor"></script>
+  <script src="pixel.js?v=20261025-direct-meal-editor"></script>
+  <script src="home.js?v=20261025-direct-meal-editor"></script>
+  <script src="review-data.js?v=20261025-direct-meal-editor"></script>
+  <script src="review.js?v=20261025-direct-meal-editor"></script>
 </body>
 </html>

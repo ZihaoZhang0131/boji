@@ -3,17 +3,18 @@ const {chromium}=require('playwright-core');
  const base=process.env.BASE_URL||'http://127.0.0.1:8765';
  const b=await chromium.launch({headless:true,channel:'chrome'});
  const profile=async p=>{await p.click('[data-scene="profile"]');await p.click('#profile-example');await p.click('#save-profile')};
- const workout=async p=>{await p.click('[data-scene="workout"]');await p.click('#copy-workout');await p.fill('#workout-duration','45');for(const id of ['0,0','0,1','0,2'])await p.click(`[data-done="${id}"]`)};
- for(const scene of ['today','meal','workout','review','profile','library','failed','loading','dark','empty','offline']){
+ const workout=async p=>{await p.click('[data-view-workout="w1009"]');await p.fill('#workout-duration','45')};
+ for(const scene of ['today','meal','workout','calendar','review','profile','library','failed','loading','dark','empty','offline']){
   const c=await b.newContext({viewport:{width:1440,height:1020},reducedMotion:'reduce'}),p=await c.newPage();
   await p.goto(`${base}/?v=0.6`);await p.evaluate(()=>document.fonts.ready);
-  if(['today','workout','library'].includes(scene)){await profile(p);await workout(p);if(scene!=='workout')await p.click('#finish-workout')}
+  if(['today','workout','library'].includes(scene)){await profile(p);await workout(p);if(scene!=='workout')await p.click('#save-workout')}
   if(scene==='meal'){await p.click('[data-ai-demo="ready"]');await p.locator('#adjust-energy').waitFor()}
-  if(scene==='failed'){await p.click('[data-ai-demo="failed"]');await p.locator('#meal-energy').getByText('这次没有识别出来').waitFor()}
+  if(scene==='failed'){await p.click('[data-ai-demo="failed"]');await p.locator('#meal-energy').getByText('估算失败').waitFor()}
   if(scene==='loading'){await p.click('[data-ai-demo="ready"]')}
   if(scene==='profile'){await p.click('[data-scene="profile"]');await p.click('#profile-example')}
+  if(scene==='calendar')await p.click('[data-scene="review"]');
   if(scene==='library')await p.click('[data-scene="library"]');
-  if(['review','dark'].includes(scene)){await p.click('[data-scene="review"]');await p.click('#toggle-energy-sample')}
+  if(['review','dark'].includes(scene)){await p.click('[data-scene="review"]');await p.click('[data-review-mode="热量"]')}
   if(scene==='dark')await p.click('[data-theme="dark"]');
   if(['empty','offline'].includes(scene))await p.click(`[data-state="${scene}"]`);
   await p.evaluate(()=>{document.querySelector('#phone').scrollTop=0;window.scrollTo(0,0);clearTimeout(toastTimer);document.querySelector('#toast').classList.remove('show')});

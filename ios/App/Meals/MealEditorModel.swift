@@ -14,12 +14,12 @@ final class MealEditorModel: Identifiable {
     var error: String?
     var busy = false
     private(set) var pendingImports = 0
-    var saveStatus: DraftSaveStatus = .idle
     private var draft: RecordDraft
     private let repository: LocalRepository
     private let autosaver: DraftAutosaver
     private let clock: any AppClock
     private let operationID = UUID()
+    private let trashOperationID = UUID()
     private var closed = false
 
     private init(meal: Meal, draft: RecordDraft, photos: [PhotoAsset], repository: LocalRepository, clock: any AppClock) {
@@ -30,36 +30,17 @@ final class MealEditorModel: Identifiable {
 
     static func open(repository: LocalRepository, clock: any AppClock, selectedDay: LocalDay, editing: Meal? = nil) async throws -> MealEditorModel {
         let state = try await repository.snapshot()
-        let existing = state.drafts.filter { $0.content.kind == .meal && $0.editingRecordID == editing?.id }.max { $0.savedAt < $1.savedAt }
-        let draft: RecordDraft
-        let meal: Meal
-        if let existing, case .meal(let value) = existing.content { draft = existing; meal = value }
-        else {
-            meal = editing ?? Meal(time: RecordTime(clock: clock, selectedDay: selectedDay))
-            draft = RecordDraft(editingRecordID: editing?.id, content: .meal(meal), savedAt: clock.now)
+        for draft in state.drafts where draft.content.kind == .meal {
+            try await repository.discardDraft(id: draft.id, at: clock.now, operationID: UUID())
         }
+        let meal = editing ?? Meal(time: RecordTime(clock: clock, selectedDay: selectedDay))
+        let draft = RecordDraft(editingRecordID: editing?.id, content: .meal(meal), savedAt: clock.now)
         let model = MealEditorModel(meal: meal, draft: draft, photos: state.photos.filter { meal.photoIDs.contains($0.id) }, repository: repository, clock: clock)
         await model.loadImages()
         return model
     }
 
     var isEditing: Bool { draft.editingRecordID != nil }
-    var statusText: String {
-        switch saveStatus {
-        case .idle: "尚未修改"
-        case .saving: "草稿保存中"
-        case .saved: "草稿已保存"
-        case .failed(let message): message
-        }
-    }
-
-    func observeStatus() async {
-        while !Task.isCancelled {
-            let latest = await autosaver.status
-            if saveStatus != latest { saveStatus = latest }
-            do { try await Task.sleep(for: .milliseconds(400)) } catch { return }
-        }
-    }
     func refreshEstimate() async {
         guard !closed, let state = try? await repository.snapshot(),
               let stored = state.drafts.first(where: { $0.id == id }), case .meal(let latest) = stored.content,
@@ -119,10 +100,9 @@ final class MealEditorModel: Identifiable {
         draft.content = .meal(meal)
         await autosaver.changed(draft, photos: photos)
         try await autosaver.flush()
-        saveStatus = await autosaver.status
     }
     func save() async -> Bool {
-        guard !busy, pendingImports == 0 else { return false }
+        guard !closed, !busy, pendingImports == 0 else { return false }
         busy = true; defer { busy = false }
         do {
             try MealRules.validate(meal)
@@ -136,7 +116,22 @@ final class MealEditorModel: Identifiable {
             return true
         } catch { self.error = error.userMessage; return false }
     }
+    func trash() async -> Bool {
+        guard isEditing, !closed, !busy, pendingImports == 0 else { return false }
+        busy = true; defer { busy = false }
+        do {
+            // Delete the persisted record without committing any form changes.
+            // The repository removes its drafts and cancels pending estimates atomically.
+            try await repository.moveToTrash(kind: .meal, id: meal.id, at: clock.now, operationID: trashOperationID)
+            closed = true
+            try? await autosaver.discard(draftID: id)
+            for photo in photos { await repository.releasePreparedPhoto(photo.id) }
+            try? await repository.collectOrphanPhotos()
+            return true
+        } catch { self.error = error.userMessage; return false }
+    }
     func discard() async -> Bool {
+        if closed { return true }
         guard !busy else { return false }
         busy = true; defer { busy = false }
         do {
@@ -160,8 +155,5 @@ final class MealEditorModel: Identifiable {
     private func schedule() {
         guard !closed else { return }
         draft.revision += 1; draft.content = .meal(meal); draft.savedAt = clock.now
-        let pending = draft, assets = photos
-        saveStatus = .saving
-        Task { await autosaver.changed(pending, photos: assets) }
     }
 }

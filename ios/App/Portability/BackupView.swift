@@ -12,7 +12,7 @@ struct BackupView:View {
             Section("备份目录") {
                 Text(backup.directoryLabel ?? "尚未连接目录").accessibilityIdentifier("backup.directory")
                 Text("可选 iCloud Drive 或其他可写目录，完整备份存入 Boji／资料集子目录。")
-                    .font(.footnote).foregroundStyle(.secondary)
+                    .font(.footnote).foregroundStyle(PixelTheme.subtle)
                 Button(backup.directoryBookmark == nil ? "选择备份目录" : "更换备份目录") { picker=true }.frame(minHeight:44)
                 if backup.directoryBookmark != nil {
                     Button("立即备份") { Task { await workspace.backupNow() } }.frame(minHeight:44).accessibilityIdentifier("backup.now")
@@ -24,7 +24,7 @@ struct BackupView:View {
                 if let date=backup.lastWrittenAt { LabeledContent("上次目录写入",value:date.formatted(date:.abbreviated,time:.shortened)) }
                 if let message=workspace.backupError ?? backup.lastError { Text(message).accessibilityIdentifier("backup.error") }
                 Text("写入目录后由系统上传；Mac 是否已下载需在 Mac 确认。")
-                    .font(.footnote).foregroundStyle(.secondary)
+                    .font(.footnote).foregroundStyle(PixelTheme.subtle)
             }
             Section {
                 DisclosureGroup("在 Mac 上读取") {
@@ -37,7 +37,7 @@ struct BackupView:View {
                     Text("薄记只管理 Boji／资料集子目录，保留每份完整备份。连续编辑会合并备份；App 被暂停时不能保证后台完成，重新打开后继续，也可点立即备份。")
                 }
                 Text("手机删除不会撤回旧备份，请自行管理目录空间。")
-                    .font(.footnote).foregroundStyle(.secondary)
+                    .font(.footnote).foregroundStyle(PixelTheme.subtle)
             }
         }
         .bojiForm()

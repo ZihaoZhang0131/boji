@@ -1,0 +1,41 @@
+/* Two quiet visualizations; spacing provides the section hierarchy. */
+.review-scroll {padding:20px 20px 28px}
+.review-scroll .page-head {margin-bottom:20px}
+.review-scroll .page-head h2 {font-size:24px}
+.review-switch {display:flex;background:var(--soft);border-radius:12px;padding:4px;margin-bottom:20px}
+.review-switch button {flex:1;min-height:44px;font-size:15px;border-radius:9px;color:var(--muted)}
+.review-switch button.active {background:var(--ink);color:var(--bg);font-weight:600}
+.review-scroll button:focus-visible {outline:2px solid var(--ink);outline-offset:2px}
+.review-period {display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:0 8px;margin-bottom:24px}
+.review-period>span {font-size:13px;color:var(--muted);font-variant-numeric:tabular-nums}
+.review-pager {display:flex;gap:8px;margin-left:auto}
+.review-pager button {min-width:44px;min-height:44px;font-size:13px;color:var(--ink)}
+.review-pager button:disabled {opacity:.3;cursor:default}
+.review-panels {display:flex;flex-direction:column;gap:36px}
+.review-scroll h3 {font-size:18px;line-height:1.4;font-weight:600;margin:0}
+.review-heatmap h3 {margin-bottom:14px}
+.review-heatmap-layout {display:grid;grid-template-columns:20px minmax(0,1fr);grid-template-rows:22px auto;gap:0 6px}
+.review-weekdays {grid-area:2/1;display:grid;grid-template-rows:repeat(7,1fr);gap:4px;color:var(--muted);font-size:11px}
+.review-weekdays span {display:grid;align-items:center}
+.review-months {grid-area:1/2;display:grid;grid-template-columns:repeat(13,minmax(0,1fr));gap:4px;font-size:11px;color:var(--muted);white-space:nowrap}
+.review-months span {overflow:visible}
+.review-cells {grid-area:2/2;display:grid;grid-template-rows:repeat(7,1fr);grid-template-columns:repeat(13,minmax(0,1fr));grid-auto-flow:column;gap:4px}
+.review-cell {aspect-ratio:1;border-radius:3px;background:var(--soft);min-width:0}
+.review-cell.recorded,.review-legend i.recorded {background:var(--ink)}
+.review-cell.future {visibility:hidden}
+.review-legend {display:flex;gap:16px;justify-content:flex-end;margin-top:22px;color:var(--muted);font-size:11px}
+.review-legend span {display:flex;align-items:center;gap:6px}
+.review-legend i {width:10px;height:10px;border-radius:2px;background:var(--soft)}
+.review-ranges {display:flex;gap:4px;margin-bottom:8px}
+.review-ranges button {min-width:56px;min-height:44px;font-size:14px;border-radius:10px;color:var(--muted)}
+.review-ranges .active {background:var(--soft);color:var(--ink)}
+.review-curve-heading {display:flex;align-items:baseline;justify-content:space-between;gap:12px;margin-bottom:16px}
+.review-curve-heading>span {font-size:12px;color:var(--muted)}
+.review-plot {display:grid;grid-template-columns:40px minmax(0,1fr);grid-template-rows:164px auto;gap:8px 4px}
+.review-plot svg {grid-area:1/2;display:block;width:100%;height:164px;overflow:visible;fill:var(--ink)}
+.review-curve-line {stroke:var(--ink);stroke-width:2;fill:none;stroke-linecap:round;stroke-linejoin:round;vector-effect:non-scaling-stroke}
+.review-baseline {stroke:var(--line);stroke-width:1;fill:none;vector-effect:non-scaling-stroke}
+.review-y-axis {grid-area:1/1;display:flex;flex-direction:column;justify-content:space-between;padding:0 0 1px;line-height:16px;font-size:11px;color:var(--muted);font-variant-numeric:tabular-nums}
+.review-x-axis {grid-area:2/2;display:flex;justify-content:space-between;font-size:12px;line-height:1.4;color:var(--muted);font-variant-numeric:tabular-nums}
+.review-empty {font-size:14px;color:var(--muted);padding:24px 0 12px;margin:0}
+@media(max-width:360px){.review-scroll{padding-left:16px;padding-right:16px}.review-period{row-gap:4px}.review-period>span{flex-basis:100%}.review-panels{gap:32px}}

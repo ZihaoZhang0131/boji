@@ -13,14 +13,14 @@ struct TrashView: View {
         List {
             Section {
                 Text("删除后保留 30 天。永久删除无法在本机撤销，已导出的备份不会自动撤回。")
-                    .font(.footnote).foregroundStyle(.secondary)
+                    .font(.footnote).foregroundStyle(PixelTheme.subtle)
             }
             if items.isEmpty { Text("回收站为空").accessibilityIdentifier("trash.empty") }
             ForEach(items) { item in
                 VStack(alignment: .leading, spacing: 8) {
                     Text(item.name)
                     Text("删除于 " + item.deleted.formatted(date: .abbreviated, time: .omitted))
-                        .font(.footnote).foregroundStyle(.secondary)
+                        .font(.footnote).foregroundStyle(PixelTheme.subtle)
                     ViewThatFits(in: .horizontal) {
                         HStack { actions(item) }
                         VStack(alignment: .leading) { actions(item) }
