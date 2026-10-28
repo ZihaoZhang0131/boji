@@ -1,0 +1,67 @@
+const {chromium}=require('playwright-core');
+const assert=require('node:assert/strict');
+const fs=require('node:fs');
+const energy=require('./workout-energy.js');
+const exercises=[{type:'weight',sets:[{weight:60,reps:10},{weight:60,reps:10}]},{type:'body',sets:[{reps:10}]}];
+assert.equal(energy.estimate(exercises,70).activeKcal,6);
+assert.equal(energy.estimate(exercises,70).minutes,4);
+assert.equal(energy.estimate(exercises,null).activeKcal,null);
+assert.equal(energy.estimate([{type:'body',sets:[{reps:1}]}],30).activeKcal,0);
+assert.equal(energy.estimate([{type:'body',sets:Array.from({length:6},()=>({reps:999}))}],70).activeKcal,null);
+(async()=>{
+ const browser=await chromium.launch({headless:true,channel:'chrome'}),errors=[];
+ const base=process.env.BASE_URL||'http://127.0.0.1:8766';fs.mkdirSync('test-results/workout',{recursive:true});
+ for(const width of [320,393])for(const dark of [false,true]){
+  const context=await browser.newContext({viewport:{width,height:720},reducedMotion:'reduce'}),p=await context.newPage();p.on('pageerror',e=>errors.push(e.message));
+  await p.clock.setFixedTime(new Date('2026-10-09T12:00:00Z'));await p.goto(base);if(dark)await p.evaluate(()=>document.querySelector('#phone').classList.add('dark'));
+  // An unchanged legacy record keeps all facts, timestamps and its original energy.
+  const legacy=await p.evaluate(()=>structuredClone(state.workouts.find(w=>w.id==='w1009')));
+  await p.click('[data-view-workout="w1009"]');await p.click('#save-workout');
+  assert.deepEqual(await p.evaluate(()=>state.workouts.find(w=>w.id==='w1009').energy),legacy.energy);
+  await p.click('[data-view-workout="w1009"]');await p.fill('[data-set="0,0,reps"]','12');await p.click('#save-workout');
+  const changed=await p.evaluate(()=>state.workouts.find(w=>w.id==='w1009'));
+  assert.equal(changed.name,legacy.name);assert.equal(changed.time,legacy.time);assert.equal(changed.energy.weight,legacy.energy.weight);
+  assert.equal(changed.energyHistory.length,2);assert.deepEqual(changed.energyHistory[0],legacy.energy);
+  // New records need no metadata input and have an inline picker.
+  await p.evaluate(()=>{state.profile=null;state.profileHistory=[]});
+  await p.click('[data-new-workout]');
+  assert.equal(await p.locator('#workout-name,#workout-time,#workout-duration,#workout-met,#workout-kcal').count(),0);
+  assert.equal(await p.locator('.sheet-head button:visible').count(),0);
+  assert.deepEqual(await p.locator('.sheet-foot button').allTextContents(),['放弃','保存']);
+  const now=await p.evaluate(()=>({date:currentWorkout.date,selected:selectedDate,time:currentWorkout.time,hour:new Date().getHours()}));
+  assert.equal(now.date,now.selected);assert.equal(Number(now.time.split(':')[0]),now.hour);
+  await p.click('[data-exercise="哑铃划船"]');assert.equal(await p.locator('#sheet-title').innerText(),'记训练');
+  assert.match(await p.locator('.set-table thead').innerText(),/单只 kg/);
+  await p.fill('[data-set="0,0,weight"]','20.5');await p.fill('[data-set="0,0,reps"]','10');
+  await p.evaluate(()=>{window.originalInput=document.querySelector('[data-set="0,0,weight"]');window.originalSheet=document.querySelector('.sheet')});
+  await p.click('[data-add-set="0"]');await p.click('[data-add-set="0"]');
+  assert.equal(await p.locator('[data-set="0,2,weight"]').inputValue(),'20.5');
+  assert(await p.evaluate(()=>window.originalInput===document.querySelector('[data-set="0,0,weight"]')&&window.originalSheet===document.querySelector('.sheet')));
+  await p.click('[data-less-set="0"]');assert.equal(await p.locator('[data-set$=",reps"]').count(),2);
+  await p.click('#add-exercise');await p.fill('#custom-exercise','自重测试');await p.selectOption('#custom-kind','body');await p.click('#save-custom');
+  await p.fill('[data-set="1,0,reps"]','8');
+  assert.equal(await p.locator('.sheet').count(),1);assert.equal(await p.locator('[data-set="1,0,weight"]').count(),0);
+  await p.click('#add-exercise');await p.click('[data-exercise="俯卧撑"]');await p.fill('[data-set="2,0,reps"]','0');
+  await p.click('#save-workout');assert.match(await p.locator('#workout-error').innerText(),/次数须为/);
+  assert.equal(await p.locator('[data-set="2,0,reps"]').evaluate(e=>e===document.activeElement),true);
+  await p.fill('[data-set="2,0,reps"]','8');
+  await p.locator('.sheet-body').evaluate(e=>e.scrollTop=0);
+  const scroll=await p.locator('.sheet-body').evaluate(e=>e.scrollTop);await p.click('[data-add-set="0"]');
+  assert.equal(await p.locator('.sheet-body').evaluate(e=>e.scrollTop),scroll);
+  for(const rect of await p.locator('.sheet-foot button,.set-stepper button,.exercise-heading button').evaluateAll(es=>es.map(e=>{const r=e.getBoundingClientRect();return {w:r.width,h:r.height}})))assert(rect.w>=44&&rect.h>=44);
+  assert(await p.locator('.sheet-body').evaluate(e=>e.scrollWidth<=e.clientWidth));
+  await p.evaluate(()=>{clearTimeout(toastTimer);document.querySelector('#toast').classList.remove('show')});
+  await p.screenshot({path:`test-results/workout/cards-${width}-${dark?'dark':'light'}.png`});
+  await p.click('#save-workout');const saved=await p.evaluate(()=>state.workouts.at(-1));assert.equal(saved.energy.activeKcal,null);assert.equal(saved.energy.weight,null);
+  await p.reload();await p.click(`[data-view-workout="${saved.id}"]`);
+  assert.equal(await p.locator('[data-set="0,0,weight"]').inputValue(),'20.5');
+  await p.fill('[data-set="0,0,weight"]','30');await p.evaluate(()=>{window.realPersist=persist;persist=()=>false});await p.click('#save-workout');
+  assert.match(await p.locator('#workout-error').innerText(),/保存失败/);assert.equal(await p.locator('[data-set="0,0,weight"]').inputValue(),'30');
+  assert.equal(await p.evaluate(id=>state.workouts.find(w=>w.id===id).exercises[0].sets[0].weight,saved.id),20.5);
+  await p.evaluate(()=>persist=window.realPersist);await p.click('#discard-workout');
+  await p.click(`[data-view-workout="${saved.id}"]`);await p.evaluate(()=>document.querySelector('.workout-editor').style.fontSize='24px');
+  assert(await p.locator('.sheet-body').evaluate(e=>e.scrollWidth<=e.clientWidth));
+  await p.click('#discard-workout');await context.close();
+ }
+ assert.deepEqual(errors,[]);await browser.close();console.log('Training cards, atomic saves, legacy snapshots, automatic estimates, 320/393 light/dark and large text passed');
+})().catch(e=>{console.error(e);process.exit(1)});

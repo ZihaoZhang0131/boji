@@ -1,5 +1,5 @@
-/* Home-only presentation. The web prototype has an explicit sample clock. */
-const homeToday = '2026-10-09';
+/* Home and review share the device's local calendar day. */
+let homeToday = currentLocalDay();
 const homeNumber = n => n == null ? '—' : String(Math.round(n));
 function homeDays(anchor = homeToday) {
   return Array.from({length:31}, (_, i) => {
@@ -39,15 +39,16 @@ function homeDateStrip() {
 }
 function homeEnergySummary() {
   const d = dayEnergy(selectedDate);
-  return `<button class="home-energy" data-energy-review aria-label="查看 ${selectedDate} 热量趋势"><span class="home-metric"><small>${d.unknown?'已知摄入':'摄入'}</small><span class="home-value" data-home-intake>${homeNumber(d.intake)}<small>kcal</small></span></span><span class="home-metric"><small>${d.unknownWorkouts?'已知训练消耗':'训练消耗'}</small><span class="home-value" data-home-burn>${homeNumber(d.active)}<small>kcal</small></span></span></button>`;
+  return `<button class="home-energy" data-energy-review aria-label="查看近一周热量趋势"><span class="home-metric"><small>${d.unknown?'已知摄入':'摄入'}</small><span class="home-value" data-home-intake>${homeNumber(d.intake)}<small>kcal</small></span></span><span class="home-metric"><small>${d.unknownWorkouts?'已知训练消耗':'训练消耗'}</small><span class="home-value" data-home-burn>${homeNumber(d.active)}<small>kcal</small></span></span></button>`;
 }
 function homeRecordRow(type, record) {
   const symbol = type==='meal' ? 'cutlery' : homeWorkoutRegion(record);
   const label = type==='meal' ? homeMealCategory(record.slot) : homeRegionLabels[symbol];
   const value = type==='meal' ? mealKcal(record) : workoutKcal(record);
-  const kcal = value==null ? '待估算' : `${homeNumber(value)} kcal`;
+  const approximate=type==='workout'&&record.energy?.automaticInputs;
+  const kcal = value==null ? '待估算' : `${approximate?'估算 ':''}${homeNumber(value)} kcal`;
   const action = type==='meal' ? `data-meal="${esc(record.id)}"` : `data-view-workout="${esc(record.id)}"`;
-  return `<button class="home-record" ${action} aria-label="编辑${label}，${esc(record.time)}，${kcal}"><span class="home-record-icon">${icon(symbol)}</span><span class="home-record-copy"><strong>${label}</strong><span><time datetime="${record.date}T${record.time}">${esc(record.time)}</time></span></span><span class="home-record-energy ${value==null?'pending':''}">${value==null?'待估算':`${homeNumber(value)}<small>kcal</small>`}</span></button>`;
+  return `<button class="home-record" ${action} aria-label="编辑${label}，${esc(record.time)}，${kcal}"><span class="home-record-icon">${icon(symbol)}</span><span class="home-record-copy"><strong>${label}</strong><span><time datetime="${record.date}T${record.time}">${esc(record.time)}</time></span></span><span class="home-record-energy ${value==null?'pending':''}">${value==null?'待估算':`${approximate?'≈ ':''}${homeNumber(value)}<small>kcal</small>`}</span></button>`;
 }
 renderToday = function() {
   const meals = preview==='empty' ? [] : state.meals.filter(m => m.date===selectedDate);
@@ -58,6 +59,12 @@ renderToday = function() {
 let homeScrollLeft = null;
 const renderBeforeHome = render;
 render = function() {
+  const today = currentLocalDay();
+  if (today !== homeToday) {
+    if (selectedDate === homeToday && $('#overlay').hidden) selectedDate = today;
+    homeToday = today;
+    homeScrollLeft = null;
+  }
   const previous = document.querySelector('.home-date-strip');
   const focusedDate = document.activeElement?.dataset.homeDate;
   if (previous) homeScrollLeft = previous.scrollLeft;
@@ -99,4 +106,10 @@ render = function() {
   });
   if (focusedDate) strip.querySelector(`[data-home-date="${focusedDate}"]`)?.focus({preventScroll:true});
 };
+function refreshLocalDay() {
+  if (currentLocalDay() !== homeToday && $('#overlay').hidden) render();
+}
+window.addEventListener('focus', refreshLocalDay);
+document.addEventListener('visibilitychange', () => { if (!document.hidden) refreshLocalDay(); });
+setInterval(refreshLocalDay, 60000);
 render();

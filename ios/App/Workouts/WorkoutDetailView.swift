@@ -66,7 +66,7 @@ struct WorkoutDetailView: View {
                                 ForEach(workout.energyHistory.reversed()) { energy in
                                     DisclosureGroup {
                                         Text(energy.inputDescription)
-                                        Text(energy.intensity.title + " · " + energy.algorithmVersion).font(.footnote).foregroundStyle(PixelTheme.subtle)
+                                        Text((energy.automaticInputs == nil ? energy.intensity.title : "按组数与次数粗估") + " · " + energy.algorithmVersion).font(.footnote).foregroundStyle(PixelTheme.subtle)
                                     } label: {
                                         VStack(alignment: .leading, spacing: 4) {
                                             Text(energy.kcal.map { "\($0) kcal" } ?? "待估算")
@@ -127,6 +127,9 @@ struct WorkoutDetailView: View {
 private extension WorkoutEnergy {
     var inputDescription: String {
         let weight = weightKG.map { $0.description + " kg" } ?? "体重未知"
+        if let inputs = automaticInputs {
+            return weight + " · 每次 " + inputs.secondsPerRep.description + " 秒、组间 " + inputs.restSeconds.description + " 秒（默认假设）"
+        }
         let duration = minutes.map { $0.description + " 分钟" } ?? "时长未知"
         return weight + " · " + duration
     }

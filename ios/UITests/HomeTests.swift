@@ -32,7 +32,7 @@ import XCTest
         selected.tap()
         attach(app, name: "home-date-strip-empty")
         app.buttons["home.energy"].tap()
-        XCTAssertTrue(app.buttons["7 天"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.buttons["review.range"].waitForExistence(timeout: 5))
         XCTAssertTrue(app.buttons["趋势"].isSelected)
         app.tabBars.buttons["记录"].tap()
         XCTAssertEqual(month.value as? String, today)
@@ -43,48 +43,26 @@ import XCTest
     func testWorkoutSaveOrDiscardHasNoRecoveryOrConflict() {
         let app = XCUIApplication()
         app.launchArguments = ["--ui-test-store", UUID().uuidString, "--ui-test-offline"]
-        app.launch()
-        let date = app.staticTexts["records.date"]
-        XCTAssertTrue(date.waitForExistence(timeout: 10))
-        let today = date.value as! String
-        app.buttons["workout.new"].tap()
-        let name = app.textFields["workout.name"]
-        XCTAssertTrue(name.waitForExistence(timeout: 5)); name.tap(); name.typeText("上肢训练")
-        if app.buttons["收起键盘"].exists { app.buttons["收起键盘"].tap() }
-        app.buttons["workout.close"].tap()
+        app.launch(); XCTAssertTrue(app.buttons["workout.new"].waitForExistence(timeout: 10))
+        app.buttons["workout.new"].tap(); app.buttons["俯卧撑"].tap()
+        let reps = app.textFields["第 1 组次数"]
+        reps.tap(); reps.typeText("8"); app.buttons["workout.close"].tap()
         let rows = app.buttons.matching(NSPredicate(format: "identifier BEGINSWITH %@", "workout.row."))
         XCTAssertEqual(rows.count, 0)
-        XCTAssertEqual(app.staticTexts["home.burn"].label, "—")
-        let dates = app.scrollViews["home.dates"].buttons.matching(NSPredicate(format: "identifier BEGINSWITH %@", "home.date."))
-        dates.element(boundBy: 14).tap(); app.buttons["home.date." + today].tap()
         app.terminate(); app.launch(); app.buttons["workout.new"].tap()
-        XCTAssertEqual(name.value as? String, "训练名称（可选）")
-        XCTAssertFalse(app.buttons["返回未保存的输入"].exists)
-        name.tap(); name.typeText("上肢训练")
-        if app.buttons["收起键盘"].exists { app.buttons["收起键盘"].tap() }
+        XCTAssertFalse(reps.exists); XCTAssertFalse(app.buttons["返回未保存的输入"].exists)
         enterBodyweightSetAndSave(app)
         let row = rows.firstMatch
-        XCTAssertTrue(row.waitForExistence(timeout: 5)); XCTAssertEqual(rows.count, 1)
-        XCTAssertFalse(row.label.contains("进行中")); XCTAssertFalse(row.label.contains("编辑中"))
-        attach(app, name: "home-saved-workout-row")
-        row.tap(); name.tap(); name.typeText("修改")
-        if app.buttons["收起键盘"].exists { app.buttons["收起键盘"].tap() }
-        app.buttons["workout.close"].tap()
-        XCTAssertEqual(rows.count, 1); XCTAssertFalse(row.label.contains("编辑中"))
-        row.tap(); XCTAssertEqual(name.value as? String, "上肢训练")
-        name.tap(); name.typeText("修改")
-        reveal(app.buttons["workout.save"], in: app); app.buttons["workout.save"].tap()
-        XCTAssertTrue(row.waitForExistence(timeout: 5)); XCTAssertEqual(rows.count, 1)
+        XCTAssertTrue(row.waitForExistence(timeout: 5)); row.tap()
+        reps.tap(); reps.typeText("9"); app.buttons["workout.close"].tap(); row.tap()
+        XCTAssertEqual(reps.value as? String, "8")
+        reps.coordinate(withNormalizedOffset: CGVector(dx: 0.9, dy: 0.5)).tap(); reps.typeText(XCUIKeyboardKey.delete.rawValue + "9"); app.buttons["workout.save"].tap()
         app.terminate(); app.launch(); row.tap()
-        XCTAssertEqual(name.value as? String, "上肢训练修改")
-        app.buttons["workout.close"].tap(); app.buttons["workout.new"].tap()
-        name.tap(); name.typeText("未保存即重启")
-        app.terminate(); app.launch(); app.buttons["workout.new"].tap()
-        XCTAssertEqual(name.value as? String, "训练名称（可选）")
-        XCTAssertEqual(app.buttons["workout.close"].label, "放弃")
+        XCTAssertEqual(reps.value as? String, "9")
         attach(app, name: "workout-save-or-discard")
-        app.buttons["workout.close"].tap(); row.tap()
-        XCTAssertEqual(name.value as? String, "上肢训练修改")
+        app.buttons["workout.close"].tap(); XCTAssertEqual(rows.count, 1)
+        app.buttons["workout.new"].tap(); app.buttons["俯卧撑"].tap(); reps.tap(); reps.typeText("10")
+        app.terminate(); app.launch(); app.buttons["workout.new"].tap(); XCTAssertFalse(reps.exists)
     }
     func testLargestTextExpandsRecordRow() {
         let app = XCUIApplication()
@@ -92,8 +70,7 @@ import XCTest
         app.launch()
         XCTAssertTrue(app.buttons["workout.new"].waitForExistence(timeout: 10))
         app.buttons["workout.new"].tap()
-        let name = app.textFields["workout.name"]
-        XCTAssertTrue(name.waitForExistence(timeout: 5)); name.tap(); name.typeText("核心训练")
+        XCTAssertFalse(app.textFields["workout.name"].exists)
         if app.buttons["收起键盘"].exists { app.buttons["收起键盘"].tap() }
         enterBodyweightSetAndSave(app)
         attach(app, name: "home-regular-text-row")
@@ -117,10 +94,10 @@ import XCTest
         XCTAssertGreaterThan(row.frame.height, 76)
         XCTAssertLessThanOrEqual(row.frame.maxX, app.frame.maxX)
         XCTAssertLessThan(row.frame.maxY, app.buttons["meal.new"].frame.minY)
-        XCTAssertTrue(row.label.contains("核心训练"))
+        XCTAssertTrue(row.label.contains("上肢训练"))
         attach(app, name: "home-largest-text-row")
         row.tap()
-        XCTAssertTrue(name.waitForExistence(timeout: 5))
+        XCTAssertTrue(app.textFields["第 1 组次数"].waitForExistence(timeout: 5))
     }
     func testMinimalEditorsSaveAndDiscard() {
         let app = XCUIApplication()
@@ -151,10 +128,9 @@ import XCTest
         XCTAssertEqual(note.value as? String, "米饭和鸡肉")
         app.buttons["meal.close"].tap()
         app.buttons["workout.new"].tap()
-        let name = app.textFields["workout.name"]
-        name.tap(); name.typeText("上肢训练")
+        XCTAssertFalse(app.textFields["workout.name"].exists)
         if app.buttons["收起键盘"].exists { app.buttons["收起键盘"].tap() }
-        app.buttons["workout.addExercise"].tap(); app.buttons["俯卧撑"].tap()
+        app.buttons["俯卧撑"].tap()
         let reps = app.textFields["第 1 组次数"]
         XCTAssertTrue(reps.waitForExistence(timeout: 5)); reps.tap(); reps.typeText("8")
         if app.buttons["收起键盘"].exists { app.buttons["收起键盘"].tap() }
@@ -206,7 +182,7 @@ import XCTest
         }
         attach(app, name: "direct-meal-editor-largest")
         app.buttons["meal.close"].tap(); app.buttons["workout.new"].tap()
-        reveal(app.buttons["workout.addExercise"], in: app); app.buttons["workout.addExercise"].tap(); app.buttons["俯卧撑"].tap()
+        app.buttons["俯卧撑"].tap()
         let reps = app.textFields["第 1 组次数"]
         reveal(reps, in: app)
         for _ in 0..<8 {
@@ -218,15 +194,16 @@ import XCTest
         XCTAssertLessThan(reps.frame.maxY, app.buttons["workout.save"].frame.minY)
         XCTAssertTrue(app.buttons["workout.save"].isHittable)
         attach(app, name: "minimal-workout-largest")
-        let energy = app.staticTexts["workout.energy.preview"]
-        reveal(energy, in: app)
-        XCTAssertGreaterThanOrEqual(energy.frame.minX, 0)
-        XCTAssertLessThanOrEqual(energy.frame.maxX, app.frame.maxX)
-        attach(app, name: "minimal-workout-metadata-largest")
+        XCTAssertFalse(app.staticTexts["workout.energy.preview"].exists)
+        for id in ["workout.close", "workout.save"] {
+            XCTAssertGreaterThanOrEqual(app.buttons[id].frame.height, 44)
+            XCTAssertGreaterThanOrEqual(app.buttons[id].frame.width, 44)
+        }
+
     }
 
     private func enterBodyweightSetAndSave(_ app: XCUIApplication) {
-        reveal(app.buttons["workout.addExercise"], in: app); app.buttons["workout.addExercise"].tap(); app.buttons["俯卧撑"].tap()
+        app.buttons["俯卧撑"].tap()
         let reps = app.textFields["第 1 组次数"]
         reveal(reps, in: app); reps.tap(); reps.typeText("8")
         XCTAssertFalse(app.buttons["确认这组完成"].exists)

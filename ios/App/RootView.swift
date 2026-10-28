@@ -85,7 +85,7 @@ struct RootView: View {
                 }
             }
             .tabItem { Label("记录", systemImage: "square.and.pencil") }.tag("today")
-            ReviewView(workspace: workspace, clock: dependencies.clock, endDay: navigation.selectedDay, trendRequest: reviewTrendRequest, section: $reviewSection)
+            ReviewView(workspace: workspace, clock: dependencies.clock, today: homeToday, trendRequest: reviewTrendRequest, section: $reviewSection)
             .tabItem { Label("回顾", systemImage: "calendar") }.tag("review")
             NavigationStack {
                 mineHome
@@ -96,6 +96,19 @@ struct RootView: View {
         .disabled(workspace.isLoading)
         .tint(.primary)
         .task { await workspace.load() }
+        .task(id: scenePhase) {
+            guard scenePhase == .active else { return }
+            // Independent from AI requests, which may wait on a slow network.
+            while workspace.session == nil && !Task.isCancelled {
+                do { try await Task.sleep(for: .seconds(3)) } catch { return }
+            }
+            guard !Task.isCancelled else { return }
+            await workspace.resumeBackup()
+            while !Task.isCancelled {
+                await workspace.processBackup()
+                do { try await Task.sleep(for: .seconds(3)) } catch { return }
+            }
+        }
         .task(id: scenePhase) {
             guard scenePhase == .active else { return }
             while !Task.isCancelled {
@@ -147,47 +160,55 @@ struct RootView: View {
     }
 
     private var mineHome: some View {
-        List {
-            NavigationLink("身体资料") { ProfileView(workspace: workspace, clock: dependencies.clock) }
-                .accessibilityIdentifier("profile.link")
-                .accessibilityValue(workspace.snapshot?.profiles.isEmpty == false ? "查看与修改" : "待填写")
-                .disabled(workspace.snapshot == nil)
-            NavigationLink("AI 估算") { AISettingsView(workspace: workspace) }
-                .accessibilityIdentifier("ai.settings")
-                .disabled(workspace.isDemo || workspace.snapshot == nil)
-            NavigationLink("数据管理") { dataManagement }
-                .accessibilityIdentifier("data.management")
-                .disabled(workspace.snapshot == nil)
+        MinePage {
+            if workspace.snapshot == nil, let error = workspace.errorMessage {
+                MineSection {
+                    Text(error).font(.footnote).foregroundStyle(PixelTheme.subtle)
+                    Button("重试打开资料") { Task { await workspace.load() } }.buttonStyle(MineActionStyle())
+                }
+            }
+            VStack(spacing: 0) {
+                NavigationLink { ProfileView(workspace: workspace, clock: dependencies.clock) } label: {
+                    MineNavigationRow(title: "身体资料", status: MinePresentation.profileStatus(workspace.snapshot, today: homeToday, loadingFailed: workspace.errorMessage != nil))
+                }.accessibilityIdentifier("profile.link").accessibilityLabel("身体资料")
+                    .accessibilityValue(MinePresentation.profileStatus(workspace.snapshot, today: homeToday, loadingFailed: workspace.errorMessage != nil)).disabled(workspace.snapshot == nil)
+                Divider()
+                NavigationLink { AISettingsView(workspace: workspace) } label: {
+                    MineNavigationRow(title: "AI 估算", status: MinePresentation.aiStatus(workspace.snapshot?.aiSettings, loadingFailed: workspace.errorMessage != nil))
+                }.accessibilityIdentifier("ai.settings").accessibilityLabel("AI 估算")
+                    .accessibilityValue(MinePresentation.aiStatus(workspace.snapshot?.aiSettings, loadingFailed: workspace.errorMessage != nil)).disabled(workspace.isDemo || workspace.snapshot == nil)
+                Divider()
+                NavigationLink { dataManagement } label: { MineNavigationRow(title: "数据管理") }
+                    .accessibilityIdentifier("data.management").disabled(workspace.snapshot == nil)
+            }.buttonStyle(.plain)
             #if DEBUG
-            // Explicit test-only access; never part of the shipped product navigation.
             if ProcessInfo.processInfo.arguments.contains("--ui-test-demo-controls") {
                 Button(workspace.isDemo ? "退出演示" : "体验演示") { Task { await workspace.toggleDemo() } }
-                    .accessibilityIdentifier("demo.toggle")
+                    .buttonStyle(MineActionStyle()).accessibilityIdentifier("demo.toggle")
             }
             #endif
-        }
-        .listStyle(.plain)
-        .environment(\.defaultMinListRowHeight, 68)
-        .bojiForm()
-        .navigationTitle("我的")
+        }.navigationTitle("我的")
     }
 
     private var dataManagement: some View {
-        List {
-            NavigationLink("导出数据") { ExportView(workspace: workspace) }
-                .accessibilityIdentifier("export.link")
-                .disabled(workspace.isDemo)
-            NavigationLink("导入与恢复") { ImportView(workspace: workspace) }
-                .accessibilityIdentifier("import.link")
-                .disabled(workspace.isDemo)
-            NavigationLink("回收站") { TrashView(workspace: workspace) }
-                .accessibilityIdentifier("trash.link")
-        }
-        .listStyle(.plain)
-        .environment(\.defaultMinListRowHeight, 60)
-        .bojiForm()
-        .navigationTitle("数据管理")
-        .navigationBarTitleDisplayMode(.inline)
+        MinePage {
+            VStack(spacing: 0) {
+                NavigationLink { BackupView(workspace: workspace) } label: {
+                    MineNavigationRow(title: "iCloud 备份", status: BackupPresentation.automaticStatus(workspace.snapshot?.backup ?? BackupState()))
+                }.accessibilityIdentifier("backup.link").disabled(workspace.isDemo)
+                Divider()
+                NavigationLink { ExportView(workspace: workspace) } label: { MineNavigationRow(title: "导出数据") }
+                    .accessibilityIdentifier("export.link").disabled(workspace.isDemo)
+                Divider()
+                NavigationLink { ImportView(workspace: workspace) } label: { MineNavigationRow(title: "导入与恢复") }
+                    .accessibilityIdentifier("import.link").disabled(workspace.isDemo)
+                Divider()
+                NavigationLink { TrashView(workspace: workspace) } label: {
+                    let count = MinePresentation.trashCount(workspace.snapshot)
+                    MineNavigationRow(title: "回收站", status: count == 0 ? "空" : "\(count) 项")
+                }.accessibilityIdentifier("trash.link")
+            }.buttonStyle(.plain)
+        }.navigationTitle("数据管理")
     }
 
     private var homeEntries: [HomePresentation.Entry] { workspace.snapshot.map { HomePresentation.entries(on: navigation.selectedDay, in: $0) } ?? [] }

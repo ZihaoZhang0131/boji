@@ -138,7 +138,7 @@ struct HomeEnergySummary: View {
         }
         .buttonStyle(.plain)
         .accessibilityIdentifier("home.energy")
-        .accessibilityHint("查看所选日期的热量趋势，训练消耗为净消耗估算")
+        .accessibilityHint("查看截至今天的近一周热量趋势，训练消耗为净消耗估算")
     }
     private var layout: AnyLayout {
         dynamicTypeSize.isAccessibilitySize ? AnyLayout(VStackLayout(alignment: .leading, spacing: 16)) : AnyLayout(HStackLayout(spacing: 20))
@@ -178,8 +178,9 @@ struct HomeRecordRow: View {
         case .meal(let meal):
             return ReviewRules.effectiveEstimate(for: meal, in: state).map { HomePresentation.number($0.totalKcal) }
         case .workout(let workout):
-            guard let kcal = workout.energyHistory.first(where: { $0.id == workout.currentEnergyID })?.kcal, kcal >= 0 else { return nil }
-            return String(kcal)
+            guard let energy = workout.energyHistory.first(where: { $0.id == workout.currentEnergyID }),
+                  let kcal = energy.kcal, kcal >= 0 else { return nil }
+            return (energy.automaticInputs == nil ? "" : "≈ ") + String(kcal)
         }
     }
     private var identifier: String {

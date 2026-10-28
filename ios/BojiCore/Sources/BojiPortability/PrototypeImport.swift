@@ -129,11 +129,33 @@ public actor PrototypeImporter {
                     return WorkoutSet(id:stable("set","\(value.id)/\(index)/\(set.id ?? String(setIndex))"),weightKG:item.type=="body" ? nil : set.weight,reps:set.reps,completed:set.done==true)
                 })
             }.filter { draft || !$0.sets.isEmpty }
-            if !draft,let energy=value.energy,let intensity=TrainingIntensity.allCases.first(where:{$0.met==energy.met}),let kcal=energy.activeKcal {
-                var snapshot=WorkoutEnergy(weightKG:energy.weight,minutes:energy.minutes,intensity:intensity,profileVersionID:nil,kcal:kcal,algorithmVersion:"prototype-v1/"+(energy.method ?? "unknown"),createdAt:Date(timeIntervalSince1970:0))
-                snapshot.id=stable("energy",value.id+"/"+PackageHash.sha256(try PackageCodec.encode(energy)))
-                result.energyHistory=[snapshot];result.currentEnergyID=snapshot.id
-            } else if !draft, value.energy != nil { notices.append("训练 \(value.date) 的计算参数不全，消耗保持未知；未按当前体重补算。") }
+            if !draft {
+                func snapshot(_ energy: LegacyWorkoutEnergy) throws -> WorkoutEnergy? {
+                    let automatic = energy.method == EnergyRules.automaticWorkoutAlgorithm
+                    guard automatic || (energy.activeKcal != nil && TrainingIntensity.allCases.contains { $0.met == energy.met }) else { return nil }
+                    let intensity = TrainingIntensity.allCases.first { $0.met == energy.met } ?? .regular
+                    var snapshot = WorkoutEnergy(weightKG: energy.weight, minutes: energy.minutes, intensity: intensity,
+                        profileVersionID: nil, kcal: energy.activeKcal,
+                        algorithmVersion: automatic ? EnergyRules.automaticWorkoutAlgorithm : "prototype-v1/" + (energy.method ?? "unknown"),
+                        createdAt: try timestamp(energy.createdAt))
+                    if automatic {
+                        snapshot.automaticInputs = energy.automaticInputs
+                        if let source = energy.profileSource, let day = source.effectiveDate {
+                            let sourceDay = try Self.day(day), sourceTime = try timestamp(source.updatedAt)
+                            snapshot.profileVersionID = state.profiles.last { $0.effectiveDay == sourceDay && $0.createdAt == sourceTime && $0.profile.weightKG == energy.weight }?.id
+                        }
+                    }
+                    snapshot.id = stable("energy", value.id + "/" + PackageHash.sha256(try PackageCodec.encode(energy)))
+                    return snapshot
+                }
+                for energy in value.energyHistory ?? [] {
+                    if let entry = try snapshot(energy), !result.energyHistory.contains(where: { $0.id == entry.id }) { result.energyHistory.append(entry) }
+                }
+                if let energy = value.energy, let current = try snapshot(energy) {
+                    if !result.energyHistory.contains(where: { $0.id == current.id }) { result.energyHistory.append(current) }
+                    result.currentEnergyID = current.id
+                } else if value.energy != nil { notices.append("训练 \(value.date) 的计算参数不全，消耗保持未知；未按当前体重补算。") }
+            }
             return result
         }
         var knownWorkouts:Set<String>=[]
@@ -203,12 +225,13 @@ private final class LegacyEnergyBox:Codable { let value:LegacyEnergy
     func encode(to encoder:any Encoder) throws { try value.encode(to:encoder) }
 }
 private struct LegacyWorkout:Decodable {
-    let id:String;let date:String;let time:String?;let name:String?;let exercises:[LegacyExercise];let duration:Decimal?;let met:Decimal?;let energy:LegacyWorkoutEnergy?;let demo:Bool?;let sourceNote:String?
+    let id:String;let date:String;let time:String?;let name:String?;let exercises:[LegacyExercise];let duration:Decimal?;let met:Decimal?;let energy:LegacyWorkoutEnergy?;let energyHistory:[LegacyWorkoutEnergy]?;let demo:Bool?;let sourceNote:String?
     var isKnownDemo:Bool { demo==true || (["w1003","w1006","w1009"].contains(id) && sourceNote?.contains("虚构样例")==true) }
 }
 private struct LegacyExercise:Decodable { let id:String?;let name:String;let type:String;let unit:String?;let sets:[LegacySet] }
 private struct LegacySet:Decodable { let id:String?;let weight:Decimal?;let reps:Int?;let done:Bool? }
-private struct LegacyWorkoutEnergy:Codable { let activeKcal:Int?;let weight:Decimal?;let minutes:Decimal?;let met:Decimal?;let method:String?;let version:String? }
+private struct LegacyWorkoutEnergy:Codable { let activeKcal:Int?;let weight:Decimal?;let minutes:Decimal?;let met:Decimal?;let method:String?;let version:String?;let automaticInputs:WorkoutEstimateInputs?;let profileSource:LegacyWorkoutProfileSource?;let createdAt:String? }
+private struct LegacyWorkoutProfileSource:Codable { let effectiveDate:String?;let updatedAt:String? }
 private struct LegacyProfile:Decodable {
     let id:String?;let sex:String?;let age:Int?;let height:Decimal?;let weight:Decimal?;let activity:Decimal?;let target:Decimal?;let demo:Bool?;let effectiveDate:String?;let updatedAt:String?
     func sameBody(as other:Self)->Bool { sex==other.sex && age==other.age && height==other.height && weight==other.weight && activity==other.activity && target==other.target && demo==other.demo }

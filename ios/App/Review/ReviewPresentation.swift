@@ -1,6 +1,40 @@
 import Foundation
 import BojiDomain
 
+struct ReviewTrendRange: Equatable {
+    let start: LocalDay
+    let end: LocalDay
+    static func recentWeek(ending today: LocalDay) -> Self {
+        Self(start: today.adding(days: -6), end: today)
+    }
+    func validationError(today: LocalDay) -> String? {
+        if start > end { return "起始日期不能晚于终止日期。" }
+        if start > today || end > today { return "日期不能晚于今天。" }
+        do { _ = try ReviewRules.rangeDayCount(starting: start, ending: end); return nil }
+        catch { return "日期区间最多 90 天，请缩短范围。" }
+    }
+}
+
+/// The marks, grid, and both axes share this plot rectangle.
+struct ReviewChartGeometry {
+    let count: Int
+    let maximum: Double
+    let size: CGSize
+    let inset: CGFloat
+    var baseline: CGFloat { size.height - inset }
+    var slot: CGFloat { size.width / CGFloat(max(1, count)) }
+    var ticks: [Double] { [maximum, maximum / 2, 0] }
+    func x(_ index: Double) -> CGFloat { (index + 0.5) * slot }
+    func y(_ value: Double) -> CGFloat { baseline - value / maximum * (size.height - 2 * inset) }
+    func point(_ value: ReviewPresentation.Point) -> CGPoint { CGPoint(x: x(value.x), y: y(value.y)) }
+    static func labelIndices(count: Int, accessibility: Bool) -> [Int] {
+        guard count > 0 else { return [] }
+        if count == 1 { return [0] }
+        if accessibility { return [0, count - 1] }
+        return count <= 7 ? Array(0..<count) : [0, (count - 1) / 2, count - 1]
+    }
+}
+
 /// Display calculations only. Missing values never become zero or interpolate across a gap.
 enum ReviewPresentation {
     enum Metric: String { case intake, training

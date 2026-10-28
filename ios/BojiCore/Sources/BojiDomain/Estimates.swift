@@ -86,6 +86,8 @@ public enum BackupStatus: String, Codable, Sendable {
     case disconnected, dirty, writing, written, pendingUpload, uploadConfirmed, failed, unknown
 }
 public struct BackupState: Codable, Equatable, Sendable {
+    /// Missing in older stores: directory permission alone is not consent to resume automation.
+    public var automaticEnabled: Bool?
     public var directoryBookmark: Data?
     public var directoryLabel: String?
     public var lastError: String?
@@ -97,6 +99,8 @@ public struct BackupState: Codable, Equatable, Sendable {
     public var activePointerSHA256: String?
     public var pointerSHA256: String?
     public var lastWrittenAt: Date?
+    /// Upload evidence for the last complete package, independent of newer local edits.
+    public var lastUploadStatus: BackupStatus?
     public var status: BackupStatus = .disconnected
     public init() {}
 }

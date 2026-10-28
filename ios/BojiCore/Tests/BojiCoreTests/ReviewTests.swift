@@ -71,3 +71,26 @@ import BojiPersistence
     #expect(RecordQuery.timeline(on: moved.time.localDay, in: state).count == 2)
     #expect(ReviewRules.day(moved.time.localDay, in: state).pendingMeals == 1)
 }
+
+@Test func customReviewRangesIncludeBothEndpointsAndRejectInvalidSpans() throws {
+    func day(_ value: String) throws -> LocalDay {
+        let p = value.split(separator: "-").map { Int($0)! }
+        return try LocalDay(year: p[0], month: p[1], day: p[2])
+    }
+    for (start, end, count) in [("2026-10-09", "2026-10-09", 1), ("2025-12-29", "2026-01-04", 7),
+                               ("2024-02-28", "2024-03-01", 3), ("2026-03-07", "2026-03-09", 3),
+                               ("2026-07-12", "2026-10-09", 90)] {
+        let a = try day(start), b = try day(end)
+        let range = try ReviewRules.range(starting: a, ending: b, in: DatasetSnapshot())
+        #expect(range.days.count == count)
+        #expect(range.days.first?.day == a && range.days.last?.day == b)
+        #expect(Set(range.days.map(\.day)).count == count)
+        #expect(try ReviewRules.range(ending: b, count: count, in: DatasetSnapshot()) == range)
+    }
+    let end = try day("2026-10-09")
+    #expect(throws: DomainError.self) { try ReviewRules.range(starting: end.adding(days: -90), ending: end, in: DatasetSnapshot()) }
+    #expect(throws: DomainError.self) { try ReviewRules.range(starting: end.adding(days: 1), ending: end, in: DatasetSnapshot()) }
+    for count in [0, -1, 91] {
+        #expect(throws: DomainError.self) { try ReviewRules.range(ending: end, count: count, in: DatasetSnapshot()) }
+    }
+}

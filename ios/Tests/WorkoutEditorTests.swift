@@ -5,6 +5,34 @@ import BojiPersistence
 
 @MainActor
 final class WorkoutEditorTests: XCTestCase {
+    private struct Clock: AppClock {
+        let now = ISO8601DateFormatter().date(from: "2026-10-25T08:42:00Z")!
+        let timeZone = TimeZone(identifier: "Asia/Shanghai")!
+    }
+    func testAutomaticDateWeightConventionAndSetControls() async throws {
+        let root = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        defer { try? FileManager.default.removeItem(at: root) }
+        let store = try await LocalRepository.open(at: root), clock = Clock()
+        let day = try LocalDay(year: 2026, month: 10, day: 24)
+        let editor = try await WorkoutEditorModel.open(repository: store, clock: clock, day: day)
+        XCTAssertEqual(editor.workout.time.localDay, day)
+        XCTAssertEqual(editor.workout.time.hour, 16); XCTAssertEqual(editor.workout.time.minute, 42)
+        XCTAssertTrue(editor.workout.name.isEmpty)
+        editor.addExercise(name: "哑铃划船", kind: .weighted)
+        let e = editor.workout.exercises[0], set = e.sets[0]
+        XCTAssertEqual(e.weightConvention, "单只重量（kg）")
+        editor.setInput(exerciseID: e.id, setID: set.id, weight: "20.5", reps: "10")
+        editor.addSet(e.id, copying: true)
+        XCTAssertEqual(editor.workout.exercises[0].sets[1].weightKG, 20.5)
+        editor.removeLastSet(e.id); editor.removeLastSet(e.id)
+        XCTAssertEqual(editor.workout.exercises[0].sets.count, 1)
+        let saved = await editor.save(); XCTAssertTrue(saved)
+        let original = try await store.snapshot().workouts[0]
+        XCTAssertEqual(original.time, editor.workout.time)
+        XCTAssertEqual(original.energyHistory.first?.algorithmVersion, EnergyRules.automaticWorkoutAlgorithm)
+        let copy = try await WorkoutEditorModel.open(repository: store, clock: clock, day: day, copying: original)
+        XCTAssertEqual(copy.workout.time.localDay, day); XCTAssertTrue(copy.workout.energyHistory.isEmpty)
+    }
     func testInputNeverPersistsAndOneSaveValidatesEverySet() async throws {
         let root = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
         defer { try? FileManager.default.removeItem(at: root) }

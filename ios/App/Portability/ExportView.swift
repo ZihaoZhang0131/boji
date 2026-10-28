@@ -11,16 +11,16 @@ struct ExportView: View {
     @State private var message: String?
     @State private var error: String?
     var body: some View {
-        Form {
-            Section("完整资料包") {
+        MinePage {
+            MineSection("完整资料包") {
                 Text("包含记录、草稿、回收站、身体资料、照片及估算历史。请只交给信任的接收方。")
                     .font(.footnote).foregroundStyle(PixelTheme.subtle)
                 Button(busy ? "正在生成完整资料包" : "生成资料包") { confirming = true }
-                    .frame(minHeight: 44).disabled(busy || workspace.isDemo).accessibilityIdentifier("export.prepare")
+                    .buttonStyle(MineActionStyle(prominent: package == nil)).disabled(busy || workspace.isDemo).accessibilityIdentifier("export.prepare")
                 if let package {
                     Text("资料包已完整生成").accessibilityIdentifier("export.ready")
                     Text("\(package.manifest.counts["meals"] ?? 0) 餐 · \(package.manifest.counts["workouts"] ?? 0) 次训练 · \(package.manifest.counts["photos"] ?? 0) 张照片")
-                    Button("存储到文件") { showPicker = true }.frame(minHeight: 44).accessibilityIdentifier("export.save")
+                    Button("存储到文件") { showPicker = true }.buttonStyle(MineActionStyle(prominent: true)).accessibilityIdentifier("export.save")
                     Text("取消存储不会删除本机记录。")
                         .font(.footnote).foregroundStyle(PixelTheme.subtle)
                 }
@@ -29,7 +29,6 @@ struct ExportView: View {
             }
 
         }
-        .bojiForm()
         .navigationTitle("导出数据")
         .navigationBarTitleDisplayMode(.inline)
         .confirmationDialog("生成含照片和身体资料的完整包？", isPresented: $confirming, titleVisibility: .visible) {

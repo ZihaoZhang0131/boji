@@ -15,8 +15,12 @@ final class WorkspaceModel {
     private var managedStore: ManagedStore?
     private var estimateQueue: EstimateQueue?
     private var directoryBackup: DirectoryBackup?
+    private var workspaceGeneration = 0
     var backupError: String?
-    var backupBusy = false
+    private var backupOperationCount = 0
+    var backupBusy: Bool { backupOperationCount > 0 }
+    // Only explicit user actions affect the backup page's button/progress state.
+    private(set) var backupUserActionInProgress = false
     let network = NetworkAvailability()
     var aiError: String?
     var clock: any AppClock { dependencies.clock }
@@ -50,6 +54,18 @@ final class WorkspaceModel {
                 try await repository.configureEstimation(url: nil, policy: nil)
                 try? await dependencies.credentials.setToken(nil, for: QwenDirectClient.legacyEndpoint)
             }
+            #if DEBUG
+            // UI tests use a real local folder, never a cloud provider or personal store.
+            if suffix.hasPrefix("Boji/UITests/"), arguments.contains("--ui-test-backup-legacy"),
+               try await repository.snapshot().backup.directoryBookmark == nil {
+                let directory = root.appendingPathComponent("薄记测试备份", isDirectory: true)
+                try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+                let fixture = DirectoryBackup(repository: repository, cache: root.appendingPathComponent("BackupStaging"), clock: dependencies.clock)
+                try await fixture.connect(directory)
+                let bookmark = try await repository.snapshot().backup.directoryBookmark
+                try await repository.updateBackup(expectedBookmark: bookmark) { $0.automaticEnabled = nil }
+            }
+            #endif
             let value = try await repository.snapshot()
             directoryBackup = nil
             session = WorkspaceSession(personal: repository, clock: dependencies.clock)
@@ -62,20 +78,28 @@ final class WorkspaceModel {
 
     func toggleDemo() async {
         guard let session, !isLoading else { return }
+        workspaceGeneration += 1
         isLoading = true
         defer { isLoading = false }
+        await directoryBackup?.suspendAndWait()
         do {
             if isDemo { await session.leaveDemo(); await estimateQueue?.setSuspended(false) }
             else { await estimateQueue?.setSuspended(true); try await session.enterDemo() }
             snapshot = try await session.activeRepository().snapshot()
+            if !isDemo { await directoryBackup?.unsuspend();try await directoryBackup?.resume() }
             errorMessage = nil
-        } catch { await estimateQueue?.setSuspended(isDemo); errorMessage = "未能切换资料空间，个人资料保持原样。" }
+        } catch {
+            if !isDemo { await directoryBackup?.unsuspend() }
+            await estimateQueue?.setSuspended(isDemo); errorMessage = "未能切换资料空间，个人资料保持原样。"
+        }
     }
 
     func restorePreviousStore() async {
         guard let managedStore, !isLoading else { return }
+        workspaceGeneration += 1
         isLoading = true
         defer { isLoading = false }
+        await directoryBackup?.suspendAndWait()
         do {
             await estimateQueue?.setSuspended(true)
             let repository = try await managedStore.restorePrevious()
@@ -85,12 +109,17 @@ final class WorkspaceModel {
             session = WorkspaceSession(personal: repository, clock: dependencies.clock)
             estimateQueue = EstimateQueue(repository: repository, remote: dependencies.remote, clock: dependencies.clock)
             errorMessage = nil
-        } catch { await estimateQueue?.setSuspended(isDemo); errorMessage = "无法恢复升级前资料。现有资料未被清空；请保留应用容器并查看恢复说明。" }
+        } catch {
+            await directoryBackup?.unsuspend()
+            await estimateQueue?.setSuspended(isDemo); errorMessage = "无法恢复升级前资料。现有资料未被清空；请保留应用容器并查看恢复说明。"
+        }
     }
 
     func importPackage(_ plan: ImportPlan, package: ValidatedPackage) async throws {
         guard let managedStore, !isLoading, !isDemo else { throw DomainError.conflict }
+        workspaceGeneration += 1
         isLoading = true;defer { isLoading = false }
+        await directoryBackup?.suspendAndWait()
         await estimateQueue?.setSuspended(true)
         do {
             let repository = try await PackageImporter().apply(plan, package: package, manager: managedStore)
@@ -105,39 +134,59 @@ final class WorkspaceModel {
                 session = WorkspaceSession(personal: repository, clock: dependencies.clock)
                 estimateQueue = EstimateQueue(repository: repository, remote: dependencies.remote, clock: dependencies.clock)
                 snapshot = try? await repository.snapshot()
-            } else { await estimateQueue?.setSuspended(false) }
+            } else { await directoryBackup?.unsuspend();await estimateQueue?.setSuspended(false) }
             throw error
         }
     }
 
     private func backups() async throws -> DirectoryBackup {
         if let directoryBackup { return directoryBackup }
+        let generation = workspaceGeneration
         let cache = try FileManager.default.url(for:.cachesDirectory,in:.userDomainMask,appropriateFor:nil,create:true).appendingPathComponent("BojiBackupStaging")
-        let value = DirectoryBackup(repository:try await activeRepository(),cache:cache,clock:dependencies.clock)
-        directoryBackup = value;return value
+        let repository = try await activeRepository()
+        guard !isLoading,!isDemo,generation == workspaceGeneration else { throw DomainError.conflict }
+        if let directoryBackup { return directoryBackup }
+        let value = DirectoryBackup(repository:repository,cache:cache,clock:dependencies.clock)
+        directoryBackup = value
+        try await value.resume()
+        return value
     }
     func connectBackup(_ url:URL) async {
-        guard !isDemo,!isLoading,!backupBusy else { return };backupBusy = true;defer { backupBusy = false }
-        do { try await backups().connect(url);try await refresh();backupError = nil;await processBackup(immediate:true) }
+        guard !isDemo,!isLoading,!backupUserActionInProgress else { return }
+        backupUserActionInProgress = true;defer { backupUserActionInProgress = false }
+        backupOperationCount += 1;defer { backupOperationCount -= 1 }
+        do {
+            let coordinator = try await backups()
+            try await coordinator.connect(url);try await refresh();backupError = nil
+            await coordinator.run(immediate:true,automaticOnly:true);try await refresh()
+        }
         catch { backupError = error.localizedDescription }
     }
-    func disconnectBackup() async {
-        guard !isDemo,!isLoading,!backupBusy else { return };backupBusy = true;defer { backupBusy = false }
-        do { try await backups().disconnect();try await refresh();backupError = nil }
-        catch { backupError = error.localizedDescription }
+    func setAutomaticBackup(_ enabled:Bool) async {
+        // Stop remains available while an already started snapshot finishes.
+        guard !isDemo,!isLoading,session != nil,(!enabled || !backupUserActionInProgress) else { return }
+        if enabled { backupUserActionInProgress = true }
+        defer { if enabled { backupUserActionInProgress = false } }
+        do { try await backups().setAutomaticEnabled(enabled);try await refresh();backupError = nil }
+        catch { backupError = error.localizedDescription;return }
+        if enabled { await processBackup(immediate:true,automaticOnly:true) }
     }
     func backupNow() async {
-        guard !backupBusy else { return };backupBusy = true;defer { backupBusy = false }
+        guard !isDemo,!isLoading,session != nil,!backupUserActionInProgress else { return }
+        backupUserActionInProgress = true;defer { backupUserActionInProgress = false }
         await processBackup(immediate:true)
     }
     func resumeBackup() async {
         guard !isDemo,!isLoading,session != nil else { return }
         do { try await backups().resume() } catch { backupError = error.localizedDescription }
     }
-    func processBackup(immediate:Bool=false) async {
-        guard !isDemo,!isLoading,session != nil else { return }
+    func processBackup(immediate:Bool=false,automaticOnly:Bool=false) async {
+        guard !isDemo,!isLoading,(!backupBusy || immediate),session != nil,!Task.isCancelled else { return }
+        backupOperationCount += 1;defer { backupOperationCount -= 1 }
         do {
-            let coordinator = try await backups();await coordinator.run(immediate:immediate)
+            let coordinator = try await backups()
+            if immediate { backupError = nil }
+            await coordinator.run(immediate:immediate,automaticOnly:automaticOnly)
             try await refresh()
         } catch { backupError = error.localizedDescription }
     }
@@ -154,9 +203,14 @@ final class WorkspaceModel {
     }
 
     func refresh() async throws {
-        let repository = try await activeRepository()
+        guard !isLoading,let currentSession = session else { return }
+        let generation = workspaceGeneration
+        let repository = await currentSession.activeRepository()
         try await repository.expireTrash(at: dependencies.clock.now)
-        snapshot = try await repository.snapshot()
+        let value = try await repository.snapshot()
+        // A finishing task from the old library must not repaint an imported/restored one.
+        guard !isLoading,session === currentSession,generation == workspaceGeneration else { return }
+        snapshot = value
     }
 
     func confirm(_ day: LocalDay, value: Bool) async {
@@ -178,7 +232,12 @@ final class WorkspaceModel {
             let policy = try await dependencies.remote.policy(url: url)
             try await activeRepository().configureEstimation(url: url, policy: policy)
             try await refresh(); aiError = nil; return true
-        } catch { aiError = error.estimationMessage; return false }
+        } catch {
+            // Replacing a key can revoke consent before the policy request fails.
+            // Keep the settings summary consistent with that persisted state.
+            try? await refresh()
+            aiError = error.estimationMessage; return false
+        }
     }
     func acceptAI() async {
         guard let policy = snapshot?.aiSettings.cachedPolicy else { return }

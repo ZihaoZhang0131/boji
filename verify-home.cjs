@@ -7,7 +7,7 @@ const assert=require('node:assert/strict');
  for(const width of [393,320]) {
   const context=await browser.newContext({viewport:{width,height:852},timezoneId:'America/Los_Angeles',reducedMotion:'reduce'});
   const p=await context.newPage();p.on('pageerror',e=>errors.push(e.message));
-  await p.goto(base);
+  await p.clock.setFixedTime(new Date('2026-10-09T12:00:00Z'));await p.goto(base);
   const days=p.locator('[data-home-date]');assert.equal(await days.count(),31);
   assert.equal(await days.first().getAttribute('data-home-date'),'2026-09-24');assert.equal(await days.last().getAttribute('data-home-date'),'2026-10-24');
   const bounds=await p.locator('.home-date.selected').evaluate(el=>{const a=el.getBoundingClientRect(),b=el.parentElement.getBoundingClientRect();return {center:a.x+a.width/2,strip:b.x+b.width/2,width:a.width,height:a.height}});
@@ -48,12 +48,12 @@ const assert=require('node:assert/strict');
   // Discarding edits keeps saved calories and restores the original form values.
   const totals=await p.evaluate(()=>dayEnergy(selectedDate));
   const savedRow=await p.locator('.home-record[data-view-workout]').innerText();
-  await p.click('[data-view-workout]');const savedMinutes=await p.locator('#workout-duration').inputValue();await p.fill('#workout-duration','90');await p.click('#close-sheet');
+  await p.click('[data-view-workout]');const savedReps=await p.locator('[data-set="0,0,reps"]').inputValue();await p.fill('[data-set="0,0,reps"]','90');await p.click('#discard-workout');
   assert.equal(await p.locator('.home-record[data-view-workout]').innerText(),savedRow);
   assert.equal(await p.evaluate(()=>dayEnergy(selectedDate).active),totals.active);
   await p.click('[data-home-date="2026-10-08"]');await p.click('[data-home-date="2026-10-09"]');await p.reload();
   assert.equal(await p.locator('.home-record[data-view-workout]').innerText(),savedRow);
-  await p.click('[data-view-workout]');assert.equal(await p.locator('#workout-duration').inputValue(),savedMinutes);await p.click('#close-sheet');
+  await p.click('[data-view-workout]');assert.equal(await p.locator('[data-set="0,0,reps"]').inputValue(),savedReps);await p.click('#discard-workout');
   await p.evaluate(()=>{selectedDate='2025-01-01';render()});assert.equal(await p.locator('.home-date.selected').getAttribute('data-home-date'),'2026-10-09');
   // Screenshots use untouched fixtures, and cover the actual light/dark home.
   await p.evaluate(()=>localStorage.removeItem('shilian.design.v1'));await p.reload();

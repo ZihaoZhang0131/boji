@@ -99,6 +99,8 @@ public struct WorkoutEnergy: Codable, Equatable, Identifiable, Sendable {
     public var kcal: Int?
     public var algorithmVersion: String
     public var createdAt: Date
+    /// Present only for sets-based estimates. Legacy intensity is not used by this algorithm.
+    public var automaticInputs: WorkoutEstimateInputs?
     public init(weightKG: Decimal?, minutes: Decimal?, intensity: TrainingIntensity, profileVersionID: UUID?, kcal: Int?, algorithmVersion: String, createdAt: Date) {
         self.weightKG = weightKG; self.minutes = minutes; self.intensity = intensity
         self.profileVersionID = profileVersionID; self.kcal = kcal; self.algorithmVersion = algorithmVersion; self.createdAt = createdAt

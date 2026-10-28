@@ -57,7 +57,7 @@ renderLibrary = function() {
 };
 
 function openDataManagement() {
-  sheet('数据管理', `<div class="group"><button class="setting-row" data-export-open>导出数据<span class="arrow" aria-hidden="true">›</span></button></div><p class="helper">网页原型保存在当前浏览器，可导出 JSON。导入恢复与回收站在 iPhone App 中使用。</p>`, '', false, '返回');
+  sheet('数据管理', `<div class="group"><button class="setting-row" data-export-open>导出数据<span class="arrow" aria-hidden="true">›</span></button></div><p class="helper">网页原型保存在当前浏览器，可导出 JSON。自动备份、导入恢复与回收站在 iPhone App 中使用。</p>`, '', false, '返回');
   bindCommon($('.sheet-body'));
 }
 

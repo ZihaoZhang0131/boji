@@ -1,4 +1,8 @@
 const $=s=>document.querySelector(s), $$=s=>[...document.querySelectorAll(s)];
+function currentLocalDay() {
+  const now = new Date();
+  return `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}-${String(now.getDate()).padStart(2,'0')}`;
+}
 const paths={sun:'M12 3v2m0 14v2M3 12h2m14 0h2M5.6 5.6 7 7m10 10 1.4 1.4M5.6 18.4 7 17m10-10 1.4-1.4M16 12a4 4 0 1 1-8 0 4 4 0 0 1 8 0',camera:'M8 5h8l2 3h3v12H3V8h3z M16 13a4 4 0 1 1-8 0 4 4 0 0 1 8 0',dumbbell:'m5 5 14 14M3 7l4-4M17 21l4-4M2 11l9-9M13 22l9-9',calendar:'M5 5h14a2 2 0 0 1 2 2v13H3V7a2 2 0 0 1 2-2M7 3v4m10-4v4M3 10h18M7 14h2m4 0h2m-8 3h2',book:'M12 5C8 2 4 3 2 4v16c3-1 7-1 10 1 3-2 7-2 10-1V4c-3-1-7-2-10 1v16',folder:'M3 6h7l2 3h9v11H3zM3 6V4h7l2 2h8v3',plus:'M12 5v14M5 12h14',arrow:'m9 5 7 7-7 7',back:'m15 5-7 7 7 7',check:'m5 12 4 4L19 6',cloud:'M6 18a5 5 0 0 1-1-10 7 7 0 0 1 13-1 5 5 0 0 1 0 11M8 14l4 4 4-4m-4-4v8',leaf:'M20 3C8 2 2 8 5 15c4 7 14 1 15-12ZM5 21 16 8',download:'M12 3v12m-5-5 5 5 5-5M4 16v5h16v-5',wifi:'M3 8c5-4 13-4 18 0M6 12c4-3 8-3 12 0m-9 4c2-1 4-1 6 0M3 3l18 18',clock:'M12 7v5l3 2M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0',image:'M3 3h18v18H3zM3 17l6-6 5 5 3-3 4 4M15 7h.01',shield:'M12 3 4 6v6c0 5 8 9 8 9s8-4 8-9V6zM8 12l3 3 5-6',edit:'m15 3 6 6-11 11-7 1 1-7zM12 6l6 6'};
 function icon(n,cls=''){return `<svg class="icon ${cls}" viewBox="0 0 24 24" aria-hidden="true"><path d="${paths[n]||paths.book}"/></svg>`}
 const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
@@ -67,7 +71,7 @@ const initial={
 const STORE='shilian.design.v1'; let state;try{const stored=JSON.parse(localStorage.getItem(STORE));const legacyDemo=stored&&!stored.demoVersion&&stored.workouts?.length===0&&stored.meals?.length===4&&stored.meals.every((m,i)=>m.id===`m${i+1}`);const previousDemo=stored?.demoVersion===2&&stored.meals?.length===3&&stored.workouts?.length===1;state=!stored||legacyDemo||previousDemo?structuredClone(initial):stored;if(legacyDemo||previousDemo)localStorage.setItem(STORE,JSON.stringify(state))}catch{state=structuredClone(initial)}
 // Old training drafts are no longer part of the recording flow.
 if(Object.hasOwn(state,'draft')){delete state.draft;try{localStorage.setItem(STORE,JSON.stringify(state))}catch{}}
-let page='today',preview='normal',selectedDate='2026-10-09',reviewMode='日历',reviewMonth=9,reviewYear=2026,mealDraft=null,currentWorkout=null,returnFocus=null,toastTimer,filterText='';
+let page='today',preview='normal',selectedDate=currentLocalDay(),reviewMode='日历',reviewMonth=9,reviewYear=2026,mealDraft=null,currentWorkout=null,returnFocus=null,toastTimer,filterText='';
 function persist(){try{localStorage.setItem(STORE,JSON.stringify(state));return true}catch{toast('浏览器存储空间不足，请先导出资料。');return false}}
 function toast(message){$('#toast').textContent=message;$('#toast').classList.add('show');clearTimeout(toastTimer);toastTimer=setTimeout(()=>$('#toast').classList.remove('show'),3200)}
 function uid(){return globalThis.crypto?.randomUUID?.()||String(Date.now())+Math.random().toString(36).slice(2)}
@@ -168,61 +172,7 @@ function openWorkoutEditor(id){
   currentWorkout.energySession=currentWorkout.id;
   openWorkout();
 }
-function openWorkoutStart(){
-  currentWorkout={id:uid(),name:'',date:selectedDate,time:'18:30',exercises:[]};
-  openWorkout();
-}
-function openWorkout(){
-  updateWorkoutPreview();
-  const w=currentWorkout,editing=state.workouts.some(item=>item.id===w.id);
-  sheet(editing?'编辑训练':'记训练',`
-    <label class="visually-hidden" for="workout-name">训练名称</label>
-    <input id="workout-name" value="${esc(w.name)}" placeholder="训练名称（可选）">
-    <div class="workout-exercises">${w.exercises.map((e,ei)=>`<section class="exercise"><div class="exercise-heading"><h3>${esc(e.name)}</h3><button class="text-button" data-remove-exercise="${ei}" aria-label="删除${esc(e.name)}">删除</button></div><small class="unit-note">${esc(e.unit)}</small><table class="set-table"><thead><tr><th>组</th>${e.type==='body'?'':'<th>kg</th>'}<th>次</th><th><span class="visually-hidden">删除</span></th></tr></thead><tbody>${e.sets.map((s,si)=>`<tr><td>${si+1}</td>${e.type==='body'?'':`<td><input aria-label="${esc(e.name)}第${si+1}组重量" inputmode="decimal" type="number" min="0" max="1000" step="0.5" value="${s.weight??''}" data-set="${ei},${si},weight"></td>`}<td><input aria-label="${esc(e.name)}第${si+1}组次数" inputmode="numeric" type="number" min="1" max="999" value="${s.reps??''}" data-set="${ei},${si},reps"></td><td><button class="text-button remove-set" data-remove-set="${ei},${si}" aria-label="删除${esc(e.name)}第${si+1}组">${icon('minus')}</button></td></tr>`).join('')}</tbody></table><button class="add-set" data-add-set="${ei}">添加一组</button></section>`).join('')}</div>
-    <button class="secondary editor-add-exercise" id="add-exercise">添加动作</button>
-    <div class="editor-meta"><div class="editor-meta-row"><label for="workout-time">时间</label><input id="workout-time" type="datetime-local" value="${w.date}T${w.time}"></div></div>
-    <p class="field-error" id="workout-error" role="alert"></p>`,
-    `<button class="primary" id="save-workout">保存</button>`,true,'放弃',()=>{closeSheet();render()});
-  $('.sheet').classList.add('record-editor','workout-editor');setScene('workout');
-  $('#workout-name').oninput=e=>{w.name=e.target.value;updateWorkoutPreview()};
-  $('#workout-time').onchange=e=>{[w.date,w.time]=e.target.value.split('T');updateWorkoutPreview()};
-  $$('[data-set]').forEach(input=>input.oninput=()=>{const [ei,si,key]=input.dataset.set.split(',');w.exercises[ei].sets[si][key]=input.value===''?null:Number(input.value);updateWorkoutPreview()});
-  $$('[data-add-set]').forEach(button=>button.onclick=()=>{const e=w.exercises[+button.dataset.addSet],last=e.sets.at(-1)||{weight:null,reps:null};e.sets.push({...last,done:false});openWorkout()});
-  $$('[data-remove-set]').forEach(button=>button.onclick=()=>{const [ei,si]=button.dataset.removeSet.split(',');w.exercises[ei].sets.splice(+si,1);openWorkout()});
-  $$('[data-remove-exercise]').forEach(button=>button.onclick=()=>{w.exercises.splice(+button.dataset.removeExercise,1);openWorkout()});
-  $('#add-exercise').onclick=openExercisePicker;
-  $('#save-workout').onclick=()=>{
-    const fail=(message,input)=>{$('#workout-error').textContent=message;if(input){input.closest('details')?.setAttribute('open','');input.focus()}};
-    if(!w.date||!w.time)return fail('请选择训练日期和时间。',$('#workout-time'));
-    if(!w.exercises.length)return fail('请添加至少一个动作。');
-    for(let ei=0;ei<w.exercises.length;ei++){
-      const e=w.exercises[ei];
-      if(!e.name.trim()||!e.sets.length)return fail('请为每个动作填写至少一组，或删除该动作。');
-      for(let si=0;si<e.sets.length;si++){
-        const s=e.sets[si];
-        if(!Number.isInteger(s.reps)||s.reps<1||s.reps>999)return fail(`${e.name}第${si+1}组：次数须为 1–999 的整数。`,$(`[data-set="${ei},${si},reps"]`));
-        if(e.type!=='body'&&(s.weight==null||!Number.isFinite(s.weight)||s.weight<0||s.weight>1000))return fail(`${e.name}第${si+1}组：请填写 0–1000 kg 的重量。`,$(`[data-set="${ei},${si},weight"]`));
-      }
-    }
-    if(w.duration!=null&&(!Number.isFinite(w.duration)||w.duration<=0||w.duration>360))return fail('时长需为 1–360 分钟，或留空待估算。',$('#workout-duration'));
-    updateWorkoutPreview();
-    const record=structuredClone(w);record.exercises.forEach(e=>e.sets.forEach(s=>s.done=true));record.updated_at=new Date().toISOString();
-    const previous=state.workouts;
-    const index=previous.findIndex(item=>item.id===record.id);
-    state.workouts=index<0?[...previous,record]:previous.map(item=>item.id===record.id?record:item);
-    if(!persist()){state.workouts=previous;return fail('保存失败，请释放浏览器存储空间后重试。')}
-    selectedDate=record.date;page='today';preview='normal';closeSheet();render();toast('训练已保存。');
-  };
-}
-function openExercisePicker(){
-  const options=['杠铃卧推','杠铃深蹲','硬拉','哑铃划船','引体向上','俯卧撑'];
-  sheet('添加动作',`<div class="editor-exercise-options">${options.map(name=>`<button data-exercise="${name}">${name}</button>`).join('')}</div><div class="editor-custom-exercise"><label class="visually-hidden" for="custom-exercise">动作名称</label><input id="custom-exercise" placeholder="其他动作"><select id="custom-kind" aria-label="动作类型"><option value="weight">负重</option><option value="body">自重</option></select><button class="text-button" id="save-custom">添加</button></div>`,'',false,'返回',openWorkout);
-  $('.sheet').classList.add('exercise-picker');
-  const add=(name,type)=>{currentWorkout.exercises.push({name,unit:type==='body'?'自重':name.includes('哑铃')?'单只重量':'总重量',type,sets:[{weight:null,reps:null,done:false}]});openWorkout()};
-  $$('[data-exercise]').forEach(button=>button.onclick=()=>add(button.dataset.exercise,/引体向上|俯卧撑/.test(button.dataset.exercise)?'body':'weight'));
-  $('#save-custom').onclick=()=>{const name=$('#custom-exercise').value.trim();if(!name)return $('#custom-exercise').focus();add(name,$('#custom-kind').value)};
-}
-function openWorkoutDetail(id){const w=state.workouts.find(x=>x.id===id);if(!w)return;sheet('训练详情',`<div class="workout-status done">${icon('check')}已完成</div><h3 class="workout-title" style="margin-top:15px">${esc(w.name)}</h3><p class="workout-sub">${esc(w.date)} · ${esc(w.time)} · ${countSets(w)} 个完成组</p>${w.sourceNote?`<p class="source-label">${esc(w.sourceNote)}${w.sourceUrl?`<br><a href="${esc(w.sourceUrl)}" target="_blank" rel="noopener">查看公开原始记录</a>`:''}</p>`:''}${w.exercises.map(e=>`<div class="exercise"><h3>${esc(e.name)}</h3><small>${esc(e.unit)}</small>${e.sets.map((s,i)=>`<div class="setting-row" style="min-height:44px;font-size:12px"><span style="color:var(--muted)">${i+1}</span><span>${e.type==='body'?'自重':`${s.weight} kg`} × ${s.reps} 次</span><span style="margin-left:auto;color:var(--green)">✓</span></div>`).join('')}</div>`).join('')}`,`<button class="primary" id="repeat-this">${icon('plus')}下次再练这套</button>`,true,'返回');$('#repeat-this').onclick=()=>{currentWorkout=structuredClone(w);currentWorkout.id=uid();currentWorkout.date=selectedDate;currentWorkout.exercises.forEach(e=>e.sets.forEach(s=>s.done=false));openWorkout()}}
+function openWorkoutDetail(id){const w=state.workouts.find(x=>x.id===id);if(!w)return;sheet('训练详情',`<div class="workout-status done">${icon('check')}已完成</div><h3 class="workout-title" style="margin-top:15px">${esc(w.name)}</h3><p class="workout-sub">${esc(w.date)} · ${esc(w.time)} · ${countSets(w)} 个完成组</p>${w.sourceNote?`<p class="source-label">${esc(w.sourceNote)}${w.sourceUrl?`<br><a href="${esc(w.sourceUrl)}" target="_blank" rel="noopener">查看公开原始记录</a>`:''}</p>`:''}${w.exercises.map(e=>`<div class="exercise"><h3>${esc(e.name)}</h3><small>${esc(e.unit)}</small>${e.sets.map((s,i)=>`<div class="setting-row" style="min-height:44px;font-size:12px"><span style="color:var(--muted)">${i+1}</span><span>${e.type==='body'?'自重':`${s.weight} kg`} × ${s.reps} 次</span><span style="margin-left:auto;color:var(--green)">✓</span></div>`).join('')}</div>`).join('')}`,`<button class="primary" id="repeat-this">${icon('plus')}下次再练这套</button>`,true,'返回');$('#repeat-this').onclick=()=>{currentWorkout=structuredClone(w);currentWorkout.id=uid();currentWorkout.date=selectedDate;const now=new Date();currentWorkout.time=`${String(now.getHours()).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')}`;delete currentWorkout.energy;delete currentWorkout.energyHistory;currentWorkout.exercises.forEach(e=>e.sets.forEach(s=>s.done=false));openWorkout()}}
 function openPlan(){let goal=state.plan.goal;sheet('当前阶段',`<p class="sheet-intro">记住这段时间想做的事，复盘时才有参照。</p>${['缓慢减脂','稳步增肌','保持状态'].map(g=>`<button class="plan-choice ${goal===g?'active':''}" data-goal="${g}">${g}<span>${goal===g?'✓':''}</span></button>`).join('')}<label class="form-label" for="plan-start">开始日期</label><input id="plan-start" type="date" value="${state.plan.start}" style="width:100%"><label class="form-label" for="plan-note">给自己的一点说明<span class="optional">选填</span></label><textarea id="plan-note">${esc(state.plan.note)}</textarea>`,`<button class="primary" id="save-plan">保存阶段目标</button><small>切换目标时，原来的阶段会保留在历史里</small>`);$$('[data-goal]').forEach(b=>b.onclick=()=>{goal=b.dataset.goal;$$('[data-goal]').forEach(x=>{x.classList.toggle('active',x.dataset.goal===goal);x.lastElementChild.textContent=x.dataset.goal===goal?'✓':''})});$('#save-plan').onclick=()=>{const start=$('#plan-start').value;if(!start)return toast('请选择阶段开始日期');if(goal!==state.plan.goal)state.planHistory.push({...state.plan,end:start});state.plan={goal,start,note:$('#plan-note').value};persist();closeSheet();render();toast('阶段目标已保存。')}}
 function openHistory(){sheet('阶段目标历史',`<div class="summary-box"><h3>${esc(state.plan.goal)}</h3><p>${esc(state.plan.start)} 至今<br>${esc(state.plan.note)}</p></div>${state.planHistory.slice().reverse().map(p=>`<div class="exercise"><h3>${esc(p.goal)}</h3><small>${esc(p.start)} → ${esc(p.end)}</small><p class="helper" style="margin-top:10px">${esc(p.note)}</p></div>`).join('')||'<p class="helper">当前是第一个阶段。切换目标后，历史会显示在这里。</p>'}`,'',false,'返回')}
 function openCloud(){sheet('把资料带到 Mac',`<div class="empty-icon" style="margin:0 auto 22px">${icon('cloud')}</div><h3 style="text-align:center;font-size:20px">保存在你自己的 iCloud Drive</h3><p class="helper" style="margin-top:18px">正式 App 中，你可以通过系统「文件」选择资料文件夹。先保存到本机，再将记录与照片写入所选位置。</p><div class="group"><div class="setting-row"><span class="row-content"><b>1. 选择资料文件夹</b><small>例如：iCloud Drive / 薄记日记</small></span></div><div class="setting-row"><span class="row-content"><b>2. 在 Mac 上打开同一文件夹</b><small>等待文件下载完成后，再交给 Agent</small></span></div></div><p class="source-label">此处为连接流程设计预览。浏览器原型未连接 iCloud，也不会上传你的资料。</p>`,`<button class="primary" id="cloud-export">先导出一份记录</button>`,false,'返回');$('#cloud-export').onclick=openExport}

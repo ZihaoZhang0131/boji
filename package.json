@@ -4,7 +4,7 @@
   "private": true,
   "description": "薄记：饮食、训练与热量记录的黑白像素风交互原型",
   "scripts": {
-    "test": "node verify.cjs && node verify-energy.cjs && node verify-pixel.cjs && node verify-home.cjs && node verify-editors.cjs && node verify-review.cjs",
+    "test": "node verify.cjs && node verify-energy.cjs && node verify-pixel.cjs && node verify-home.cjs && node verify-editors.cjs && node verify-review.cjs && node verify-workout.cjs && node verify-mine.cjs",
     "capture": "node capture-energy.cjs"
   },
   "devDependencies": {

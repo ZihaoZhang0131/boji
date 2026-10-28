@@ -2,6 +2,19 @@ import Foundation
 import BojiDomain
 
 extension LocalRepository {
+    /// Saves an atomic training entry and estimates from its sets without requiring timing inputs.
+    public func saveWorkout(_ input: Workout, at now: Date, operationID: UUID) throws {
+        guard !input.exercises.isEmpty else { throw DomainError.invalidValue("请添加至少一个动作") }
+        var record = input
+        record.exercises = try input.exercises.map { exercise in
+            guard !exercise.sets.isEmpty else { throw DomainError.invalidValue("请为动作添加至少一组，或删除该动作") }
+            var value = exercise
+            value.sets = try exercise.sets.map { try WorkoutRules.confirming($0, kind: exercise.kind) }
+            return value
+        }
+        try persistWorkout(record, draftID: nil, minutes: nil, intensity: .regular, reestimate: false,
+                           automatic: true, at: now, operationID: operationID)
+    }
     public func finishWorkout(_ input: Workout, draftID: UUID, minutes: Decimal?, intensity: TrainingIntensity,
                               reestimate: Bool, at now: Date, operationID: UUID) throws {
         try persistWorkout(input, draftID: draftID, minutes: minutes, intensity: intensity, reestimate: reestimate, at: now, operationID: operationID)
@@ -22,7 +35,7 @@ extension LocalRepository {
     }
 
     private func persistWorkout(_ input: Workout, draftID: UUID?, minutes: Decimal?, intensity: TrainingIntensity,
-                                reestimate: Bool, at now: Date, operationID: UUID) throws {
+                                reestimate: Bool, automatic: Bool = false, at now: Date, operationID: UUID) throws {
         let exercises = try WorkoutRules.completedExercises(input.exercises)
         if let minutes, !EnergyRules.isFinite(minutes) || minutes <= 0 || minutes > 360 { throw DomainError.invalidValue("时长须大于 0 且不超过 360 分钟") }
         try commit(id: operationID) { state in
@@ -40,11 +53,16 @@ extension LocalRepository {
             var value = original ?? input
             value.name = input.name; value.time = input.time; value.exercises = exercises
             let oldEnergy = original?.energyHistory.first { $0.id == original?.currentEnergyID }
-            let factsChanged = original == nil || original?.name != value.name || original?.time != value.time || original?.exercises != exercises || oldEnergy?.minutes != minutes || oldEnergy?.intensity != intensity
-            if oldEnergy == nil || oldEnergy?.minutes != minutes || oldEnergy?.intensity != intensity || reestimate {
+            let exercisesChanged = original?.exercises != exercises
+            let factsChanged = original == nil || original?.name != value.name || original?.time != value.time || exercisesChanged || (!automatic && (oldEnergy?.minutes != minutes || oldEnergy?.intensity != intensity))
+            let needsEnergy = automatic ? (original == nil || exercisesChanged) : (oldEnergy == nil || oldEnergy?.minutes != minutes || oldEnergy?.intensity != intensity || reestimate)
+            if needsEnergy {
                 let profile = ProfileRules.effective(on: input.time.localDay, versions: state.profiles)
                 let preserveWeight = oldEnergy != nil && !reestimate
-                let energy = try EnergyRules.workoutSnapshot(weightKG: preserveWeight ? oldEnergy?.weightKG : profile?.profile.weightKG,
+                let energy = automatic ? EnergyRules.automaticWorkoutSnapshot(exercises: exercises,
+                    weightKG: preserveWeight ? oldEnergy?.weightKG : profile?.profile.weightKG,
+                    profileID: preserveWeight ? oldEnergy?.profileVersionID : profile?.id, at: now)
+                    : try EnergyRules.workoutSnapshot(weightKG: preserveWeight ? oldEnergy?.weightKG : profile?.profile.weightKG,
                     minutes: minutes, intensity: intensity, profileID: preserveWeight ? oldEnergy?.profileVersionID : profile?.id, at: now)
                 value.energyHistory.append(energy); value.currentEnergyID = energy.id
             }

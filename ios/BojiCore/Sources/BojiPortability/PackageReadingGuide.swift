@@ -17,6 +17,7 @@ public enum PackageReadingGuide {
     Date 类字段均为 UTC Unix 秒（可带小数）；localDay/hour/minute 与 timeZoneIdentifier 保留录入时的本地日期、时间和 IANA 时区，不能按读取机器时区重新分日。
     热量单位 kcal、食物 grams 为 g、weightKG 为 kg、heightCM 为 cm、minutes 为分钟。JSON 缺省或 null 表示未知，不是零。
     日常基线和 MET 均为估算，训练 energyHistory 保留当时体重、时长、算法版本；不要拿最新体重改写旧消耗。只计算 completed=true 的正式训练组。
+    sets-met-net-v1 的 automaticInputs 保存次数、组数与默认节奏／休息／MET；minutes 为推导时长而非实测，intensity 仅为旧格式兼容字段，不参与此算法。旧记录不随新算法或体重批量重算。
     缺记录不是没有吃、没有练。完整日须确认记全、至少一餐且餐食与训练热量有效。日均值只按完整样本日数计算，并显示样本数；日常基线未知时总消耗与差值未知。daySummaries 是导出时计算结果，事实仍以记录为准。
     包中不含模型密钥、个人令牌、目录书签、联网授权或待执行任务。导入不会自动识别照片。正式导出禁止整个演示空间；旧迁移保留的 demo 来源也须排除真实统计。
     agent-prompt.txt 可复制后自行配合完整资料包交给 Agent；App 不会代你发送任何内容。

@@ -114,6 +114,7 @@ public actor LocalRepository: RecordRepository {
         let revision=try snapshot().dataset.revision
         try updateBackup(expectedBookmark:expectedBookmark) {
             $0.lastPublishedRevision=pointerRevision;$0.pointerSHA256=digest;$0.lastWrittenAt=now
+            $0.lastUploadStatus = .unknown
             $0.activeExportID=nil;$0.activePointerSHA256=nil;$0.dirty=revision>pointerRevision
             $0.status = $0.dirty ? .dirty : .written;$0.lastError=nil;$0.retryCount=0;$0.nextRetryAt=nil
         }

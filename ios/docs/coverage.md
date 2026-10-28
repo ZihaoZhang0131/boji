@@ -67,7 +67,7 @@
 | 完整度由用户确认且随事实修改失效 | ReviewTests.confirmationsSurviveEstimatesButNotMovedFacts | 事实失效、估算保留确认已测 |
 | 总消耗和差值遵循缺失规则 | ReviewTests.incompleteIntakeAndUnknownBurnAreNotZero | 总消耗／差值缺失规则已测 |
 | 时间线及三种记录回顾读取正式资料 | ReviewTests.twoCompleteDaysAverageAndSearchUseOnlyFormalFacts + LaunchTests | 正式事实与搜索已测 |
-| 七天与三十天图表表达完整性 | ReviewAITests.testEveryChartDayCanBeSelectedOnSmallScreen + ReviewTests | 7／30 天共 37 日期可选、完整样本平均已测 |
+| 自定义日期区间与图表完整性 | ReviewAITests.testReviewDateEditingCommitsOnlyOnConfirm + ReviewPresentationTests + ReviewTests.customReviewRangesIncludeBothEndpointsAndRejectInvalidSpans | 默认近 7 天、确认／取消、单日及 90／91 天边界、跨年闰日与缺失值已测 |
 | 历史训练重估必须显式触发 | WorkoutTests.workoutFinishCopyAndReestimateKeepHistoryAndIdentity | 重估显式快照历史已测 |
 
 ## food-estimation
@@ -103,3 +103,20 @@
 `BojiCore/Tests/BojiCoreTests` 为核心测试，`Tests` 为原生模型／装配测试，`UITests` 为界面测试，`services/food-estimation/test` 为服务验证。Xcode 结果包位于本地 `.build/`，不随源代码提交；关键截图和结论保存在 `docs/`。
 
 用户的 iPhone 14（iOS 26.6）已完成签名安装和启动；用户选定的 iCloud Drive 测试目录已在手机授权，Mac 下载并核验真实快照，断开与重连也已实测。旧密钥误发到聊天后，用户确认已撤销并在手机配置新平台密钥；真机真实识别、人工修正、重启、回顾、完整导出和空库导入均已验证。Mac 已解锁，模拟器可视复测已执行。剩余真机飞行模式整体流程和 12.3 中的 HEIC、拒绝权限、深色、VoiceOver 等矩阵项尚未逐项验收；待办以 OpenSpec tasks.md 未勾选项为准。
+
+## 我的与设置简洁化（2026-10-25）
+
+| 范围 | 验证 | 结论 |
+|---|---|---|
+| 当前资料状态、授权政策状态和失败刷新 | MinePresentationTests | 今天生效规则、旧政策不算授权、开关不授权、改密钥请求失败、撤回／断开、重新载入已测；内存凭据与模拟服务 |
+| 子页排版、导航和阶段主操作 | MineSettingsTests + ProfileTests + ExportPhotoTests | 小屏、最大辅助字号、44 pt 操作、保存返回、导出／系统文件选择器、恢复取消已测 |
+| 回收站计数、永久删除确认和恢复 | LaunchTests.testMealDiscardRestartManualEditAndTrash + LifecycleTests | 计数刷新、取消不删除、恢复后重启、保留期限已测 |
+| 网页布局与键盘焦点 | verify-mine.cjs + npm test | 320／393 px 浅深色、200% 重排、嵌套返回焦点、即时开关、导出重试及记录／回顾回归已测 |
+
+## 2026-10-25 iCloud 自动备份恢复
+
+- `BackupTests`：旧授权等待明确启用、启停持久化、停止后手动备份、取消不耗费重试、6 秒合并、并发串行发布、切换前排空、15／60／300 秒退避与三次上限、空间错误、外部指针保护、完整文件上传证据和 30 秒刷新限制。
+- `BackupSettingsTests`：首次目录选择即备份、后续自动更新、重启与更换目录、导入预览后停止、恢复前更换目录且停止、演示隔离、操作错误不被自动轮询清除；320／393pt 浅深色及最大辅助字号的六种状态截图。
+- `MineSettingsTests`：数据管理入口、系统目录选择器加载后下拉关闭、放弃选择后重启仍未配置、系统返回、44pt 操作区及最大字号滚动。
+- Web 继续只导出 JSON，`verify-mine.cjs` 检查 iPhone 自动备份提示；记录、回顾与其他设置沿用完整回归。
+- 本轮真实 iCloud 验收由用户选择稍后执行：尚未验证本轮真机首次/后续上传、停止以及 Mac 完整下载校验；模拟上传证据和历史验收不能替代。

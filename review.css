@@ -20,22 +20,51 @@
 .review-months {grid-area:1/2;display:grid;grid-template-columns:repeat(13,minmax(0,1fr));gap:4px;font-size:11px;color:var(--muted);white-space:nowrap}
 .review-months span {overflow:visible}
 .review-cells {grid-area:2/2;display:grid;grid-template-rows:repeat(7,1fr);grid-template-columns:repeat(13,minmax(0,1fr));grid-auto-flow:column;gap:4px}
-.review-cell {aspect-ratio:1;border-radius:3px;background:var(--soft);min-width:0}
+.review-cell {aspect-ratio:1;border-radius:3px;background:var(--soft);min-width:0;display:grid;place-items:center}
 .review-cell.recorded,.review-legend i.recorded {background:var(--ink)}
+.review-cell .review-cell-icon {width:66.666%;height:66.666%;color:var(--bg);fill:currentColor;stroke:none}
 .review-cell.future {visibility:hidden}
 .review-legend {display:flex;gap:16px;justify-content:flex-end;margin-top:22px;color:var(--muted);font-size:11px}
 .review-legend span {display:flex;align-items:center;gap:6px}
 .review-legend i {width:10px;height:10px;border-radius:2px;background:var(--soft)}
-.review-ranges {display:flex;gap:4px;margin-bottom:8px}
-.review-ranges button {min-width:56px;min-height:44px;font-size:14px;border-radius:10px;color:var(--muted)}
-.review-ranges .active {background:var(--soft);color:var(--ink)}
-.review-curve-heading {display:flex;align-items:baseline;justify-content:space-between;gap:12px;margin-bottom:16px}
+.review-panels.review-trends {display:grid;grid-template-columns:minmax(3ch,max-content) minmax(0,1fr);gap:32px 6px;font-size:12px;font-variant-numeric:tabular-nums}
+.review-curve {grid-column:1/-1;display:grid;grid-template-columns:subgrid;row-gap:12px}
+.review-curve-heading {grid-column:2;display:flex;flex-wrap:wrap;align-items:baseline;justify-content:flex-start;gap:2px 6px}
+.review-curve-heading h3 {font-size:16px;line-height:1.4}
 .review-curve-heading>span {font-size:12px;color:var(--muted)}
-.review-plot {display:grid;grid-template-columns:40px minmax(0,1fr);grid-template-rows:164px auto;gap:8px 4px}
-.review-plot svg {grid-area:1/2;display:block;width:100%;height:164px;overflow:visible;fill:var(--ink)}
+.review-plot {grid-column:1/-1;display:grid;grid-template-columns:subgrid;grid-template-rows:var(--plot-height) auto;column-gap:6px}
+.review-plot svg {grid-area:1/2;display:block;width:100%;height:var(--plot-height);overflow:visible;fill:var(--ink)}
 .review-curve-line {stroke:var(--ink);stroke-width:2;fill:none;stroke-linecap:round;stroke-linejoin:round;vector-effect:non-scaling-stroke}
+.review-zero {stroke:var(--ink);stroke-width:2;fill:none;vector-effect:non-scaling-stroke}
 .review-baseline {stroke:var(--line);stroke-width:1;fill:none;vector-effect:non-scaling-stroke}
-.review-y-axis {grid-area:1/1;display:flex;flex-direction:column;justify-content:space-between;padding:0 0 1px;line-height:16px;font-size:11px;color:var(--muted);font-variant-numeric:tabular-nums}
-.review-x-axis {grid-area:2/2;display:flex;justify-content:space-between;font-size:12px;line-height:1.4;color:var(--muted);font-variant-numeric:tabular-nums}
-.review-empty {font-size:14px;color:var(--muted);padding:24px 0 12px;margin:0}
+.review-gridline,.review-date-tick {stroke:var(--line);stroke-width:1;fill:none;vector-effect:non-scaling-stroke}
+.review-gridline {stroke-opacity:.55}
+@media(prefers-contrast:more){.review-gridline,.review-baseline,.review-date-tick{stroke:var(--muted);stroke-opacity:1}}
+.review-y-axis {grid-area:1/1;position:relative;line-height:16px;font-size:12px;color:var(--muted);font-variant-numeric:tabular-nums}
+.review-y-axis::before {content:attr(data-widest);visibility:hidden;white-space:nowrap}
+.review-y-axis span {position:absolute;right:0;transform:translateY(-50%);white-space:nowrap}
+.review-x-axis {grid-area:2/2;position:relative;height:18px;margin-top:var(--date-offset);font-size:12px;line-height:18px;color:var(--muted);font-variant-numeric:tabular-nums}
+.review-x-axis span {position:absolute;white-space:nowrap;transform:translateX(-50%)}
+.review-x-axis .first {transform:none}
+.review-x-axis .last {transform:translateX(-100%)}
+.review-empty {grid-column:2;font-size:14px;color:var(--muted);padding:12px 0;margin:0}
 @media(max-width:360px){.review-scroll{padding-left:16px;padding-right:16px}.review-period{row-gap:4px}.review-period>span{flex-basis:100%}.review-panels{gap:32px}}
+/* Give seven full dates room even when a six-digit y-axis widens the gutter. */
+@media(max-width:360px){.review-panels.review-trends{margin-inline:-4px}}
+
+.review-range-button {display:flex;align-items:center;gap:10px;min-height:44px;max-width:100%;padding:10px 12px;margin-bottom:28px;background:var(--soft);border-radius:10px;text-align:left;font-size:13px;font-variant-numeric:tabular-nums;color:var(--ink)}
+.review-range-button>span {min-width:0;line-height:1.5}
+.review-range-button .icon {width:18px;height:18px;flex-shrink:0}
+.review-range-button .review-range-chevron {width:14px;height:14px;transform:rotate(90deg);color:var(--muted)}
+.review-range-panel {position:fixed;inset:auto;margin:0;padding:20px;max-height:calc(100dvh - 32px);overflow:auto;border:1px solid var(--line);border-radius:14px;background:var(--bg);color:var(--ink);font-family:inherit}
+.review-range-panel h3 {margin:0 0 16px;font-size:17px;font-weight:600}
+.review-range-panel label {display:block;font-size:13px;margin:14px 0 6px}
+.review-range-panel input {display:block;box-sizing:border-box;width:100%;min-width:0;min-height:44px;background:var(--soft);color:var(--ink);font:inherit;font-size:15px;border:1px solid var(--line);border-radius:8px;padding:8px 10px}
+.review-range-panel p {color:var(--muted);font-size:12px;line-height:1.5;margin:12px 0 16px}
+.review-range-panel p.invalid {color:var(--ink)}
+.review-range-actions {display:flex;gap:12px}
+.review-range-actions button {flex:1;min-width:44px;min-height:44px;border-radius:8px;font-size:14px;background:var(--soft);color:var(--ink)}
+.review-range-actions [data-review-apply] {background:var(--ink);color:var(--bg)}
+.review-range-actions button:disabled {opacity:.35;cursor:default}
+.review-range-panel :focus-visible {outline:2px solid var(--ink);outline-offset:2px}
+@media(hover:hover){.review-range-button:hover,.review-range-actions button:hover:not(:disabled){filter:brightness(.93)}}

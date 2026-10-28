@@ -10,8 +10,8 @@ struct TrashView: View {
         return (meals + workouts).sorted { $0.deleted > $1.deleted }
     }
     var body: some View {
-        List {
-            Section {
+        MinePage {
+            MineSection {
                 Text("删除后保留 30 天。永久删除无法在本机撤销，已导出的备份不会自动撤回。")
                     .font(.footnote).foregroundStyle(PixelTheme.subtle)
             }
@@ -22,13 +22,13 @@ struct TrashView: View {
                     Text("删除于 " + item.deleted.formatted(date: .abbreviated, time: .omitted))
                         .font(.footnote).foregroundStyle(PixelTheme.subtle)
                     ViewThatFits(in: .horizontal) {
-                        HStack { actions(item) }
-                        VStack(alignment: .leading) { actions(item) }
+                        HStack(spacing: 24) { actions(item) }
+                        VStack(alignment: .leading, spacing: 8) { actions(item) }
                     }
-                }.padding(.vertical, 8)
+                }.frame(maxWidth: .infinity, alignment: .leading)
+                if item.id != items.last?.id { Divider() }
             }
         }
-        .bojiForm()
         .navigationTitle("回收站")
         .alert("永久删除这条记录？", isPresented: Binding(get: { deletion != nil }, set: { if !$0 { deletion = nil } })) {
             Button("永久删除", role: .destructive) {
@@ -39,8 +39,12 @@ struct TrashView: View {
         } message: { Text("本机记录、历史和无其他引用的照片将被移除。") }
     }
     @ViewBuilder private func actions(_ item: TrashItem) -> some View {
-        Button("恢复") { Task { await workspace.restore(kind: item.kind, id: item.id) } }.buttonStyle(PixelButtonStyle())
-        Button("永久删除", role: .destructive) { deletion = item }.buttonStyle(PixelButtonStyle())
+        Button { Task { await workspace.restore(kind: item.kind, id: item.id) } } label: {
+            Text("恢复").frame(minWidth: 44, minHeight: 44).contentShape(Rectangle())
+        }.buttonStyle(.plain)
+        Button(role: .destructive) { deletion = item } label: {
+            Text("永久删除").frame(minWidth: 44, minHeight: 44).contentShape(Rectangle())
+        }.buttonStyle(.plain)
     }
 }
 

@@ -55,6 +55,12 @@ public enum PackageValidation {
                 if let kcal = energy.kcal, !(0...100_000).contains(kcal) { throw PackageError.invalid("训练消耗") }
                 if energy.algorithmVersion == EnergyRules.workoutAlgorithm,
                    energy.kcal != EnergyRules.netWorkout(weightKG: energy.weightKG, minutes: energy.minutes, intensity: energy.intensity) { throw PackageError.invalid("训练消耗快照") }
+                if energy.algorithmVersion == EnergyRules.automaticWorkoutAlgorithm {
+                    guard let inputs = energy.automaticInputs, inputs.isValid,
+                          energy.minutes == inputs.supportedMinutes,
+                          energy.kcal == EnergyRules.automaticWorkout(weightKG: energy.weightKG, inputs: inputs)
+                    else { throw PackageError.invalid("训练自动估算快照") }
+                } else if energy.automaticInputs != nil { throw PackageError.invalid("训练估算版本与参数不匹配") }
             }
         }
         for workout in state.workouts {

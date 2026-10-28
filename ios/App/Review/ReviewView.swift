@@ -4,17 +4,22 @@ import BojiDomain
 struct ReviewView: View {
     let workspace: WorkspaceModel
     let clock: any AppClock
-    let endDay: LocalDay
+    let today: LocalDay
     let trendRequest: UUID
     @Binding var section: String
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
-    @State private var rangeCount = 7
     @State private var calendarOffset = 0
-    @State private var trendEnd: LocalDay?
+    @State private var appliedRange: ReviewTrendRange?
+    @State private var showingRangePopover = false
+    @State private var showingRangeSheet = false
+    @State private var draftStart = Date()
+    @State private var draftEnd = Date()
     private var state: DatasetSnapshot { workspace.snapshot ?? DatasetSnapshot() }
-    private var today: LocalDay { LocalDay(clock.now, timeZone: clock.timeZone) }
-    private var chartEnd: LocalDay { min(trendEnd ?? endDay, today) }
-    private var days: [DayReview] { (try? ReviewRules.range(ending: chartEnd, count: rangeCount, in: state).days) ?? [] }
+    private var chartRange: ReviewTrendRange { appliedRange ?? .recentWeek(ending: today) }
+    private var days: [DayReview] { (try? ReviewRules.range(starting: chartRange.start, ending: chartRange.end, in: state).days) ?? [] }
+    private var draftRange: ReviewTrendRange {
+        ReviewTrendRange(start: LocalDay(draftStart, timeZone: clock.timeZone), end: LocalDay(draftEnd, timeZone: clock.timeZone))
+    }
     private var calendarDays: [LocalDay] { ReviewPresentation.calendarDays(today: today, offset: calendarOffset) }
     private var earliest: LocalDay? { ReviewPresentation.earliest(in: state, today: today) }
 
@@ -28,8 +33,11 @@ struct ReviewView: View {
             }.background(PixelTheme.canvas)
                 .navigationTitle("回顾").navigationBarTitleDisplayMode(.inline)
         }
-        .onChange(of: endDay) { _, _ in trendEnd = nil }
-        .onChange(of: trendRequest) { _, _ in trendEnd = nil }
+        .onChange(of: trendRequest) { _, _ in
+            appliedRange = nil
+            showingRangePopover = false
+            showingRangeSheet = false
+        }
     }
     private var picker: some View {
         Picker("回顾方式", selection: $section) { Text("日历").tag("日历"); Text("趋势").tag("趋势") }
@@ -53,33 +61,76 @@ struct ReviewView: View {
     private var trend: some View {
         VStack(alignment: .leading, spacing: 24) {
             rangePicker
-            pager(start: chartEnd.adding(days: 1 - rangeCount), end: chartEnd, canNext: chartEnd < today) { delta in
-                trendEnd = min(chartEnd.adding(days: delta * rangeCount), today)
-            }
-            VStack(alignment: .leading, spacing: 36) {
-                ReviewChart(days: days, metric: .intake)
-                ReviewChart(days: days, metric: .training)
-            }
+            ReviewCharts(days: days)
         }
     }
-    private var rangeControl: some View {
-        Picker("趋势范围", selection: $rangeCount) { Text("7 天").tag(7); Text("30 天").tag(30) }
+    private var rangePicker: some View {
+        Button {
+            draftStart = chartRange.start.date(in: clock.timeZone)
+            draftEnd = chartRange.end.date(in: clock.timeZone)
+            if dynamicTypeSize.isAccessibilitySize { showingRangeSheet = true }
+            else { showingRangePopover = true }
+        } label: {
+            HStack(spacing: 10) {
+                Image(systemName: "calendar")
+                Text(ReviewPresentation.period(chartRange.start, chartRange.end))
+                    .monospacedDigit().fixedSize(horizontal: false, vertical: true)
+                Image(systemName: "chevron.down").font(.caption2).foregroundStyle(PixelTheme.subtle)
+            }.font(.subheadline).padding(.horizontal, 12).padding(.vertical, 10)
+                .frame(minHeight: 44).foregroundStyle(Color.primary)
+                .background(PixelTheme.surface, in: RoundedRectangle(cornerRadius: 10))
+        }.buttonStyle(.plain)
+            .accessibilityLabel("选择日期区间")
+            .accessibilityValue(chartRange.start.description + " 至 " + chartRange.end.description)
+            .accessibilityIdentifier("review.range")
+            .popover(isPresented: $showingRangePopover) {
+                rangeEditor.frame(width: 280).presentationCompactAdaptation(.popover)
+            }
+            .sheet(isPresented: $showingRangeSheet) {
+                ScrollView { rangeEditor }.presentationDetents([.large]).presentationDragIndicator(.visible)
+            }
     }
-    @ViewBuilder private var rangePicker: some View {
-        if dynamicTypeSize.isAccessibilitySize { rangeControl.pickerStyle(.menu).frame(minHeight: 44) }
-        else {
-            HStack(spacing: 4) {
-                ForEach([7, 30], id: \.self) { count in
-                    Button { rangeCount = count } label: {
-                        Text("\(count) 天").font(.subheadline).frame(minWidth: 56, minHeight: 44)
-                            .foregroundStyle(rangeCount == count ? Color.primary : PixelTheme.subtle)
-                            .background(rangeCount == count ? PixelTheme.surface : .clear, in: RoundedRectangle(cornerRadius: 10))
-                            .contentShape(Rectangle())
-                    }.accessibilityAddTraits(rangeCount == count ? [.isSelected] : [])
-                }
-            }.buttonStyle(.plain)
+    private var rangeEditor: some View {
+        VStack(alignment: .leading, spacing: 16) {
+            Text("日期区间").font(.headline).accessibilityAddTraits(.isHeader)
+            dateField("起始日期", selection: $draftStart, identifier: "review.range.start")
+            dateField("终止日期", selection: $draftEnd, identifier: "review.range.end")
+            Text(draftRange.validationError(today: today) ?? "最多选择 90 天")
+                .font(.footnote).foregroundStyle(PixelTheme.subtle)
+                .fixedSize(horizontal: false, vertical: true).accessibilityIdentifier("review.range.message")
+            ViewThatFits(in: .horizontal) {
+                HStack(spacing: 12) { rangeCancel; rangeApply }
+                VStack(spacing: 12) { rangeCancel; rangeApply }
+            }
+        }.padding(20).background(PixelTheme.canvas)
+            .environment(\.timeZone, clock.timeZone)
+            .environment(\.calendar, Calendar(identifier: .gregorian))
+    }
+    private func dateField(_ title: String, selection: Binding<Date>, identifier: String) -> some View {
+        VStack(alignment: .leading, spacing: 6) {
+            Text(title).font(.subheadline)
+            DatePicker(title, selection: selection, in: ...today.date(in: clock.timeZone), displayedComponents: .date)
+                .datePickerStyle(.compact).labelsHidden()
+                .dynamicTypeSize(...DynamicTypeSize.xxxLarge)
+                .frame(minHeight: 44, alignment: .leading)
+                .accessibilityIdentifier(identifier)
         }
     }
+    private var rangeCancel: some View {
+        Button { dismissRange() } label: { Text("取消").frame(maxWidth: .infinity, minHeight: 44) }
+            .buttonStyle(.bordered).tint(.primary).accessibilityIdentifier("review.range.cancel")
+    }
+    private var rangeApply: some View {
+        Button {
+            guard draftRange.validationError(today: today) == nil else { return }
+            appliedRange = draftRange
+            dismissRange()
+        } label: { Text("确定").foregroundStyle(PixelTheme.canvas).frame(maxWidth: .infinity, minHeight: 44) }
+            .buttonStyle(.borderedProminent).tint(.primary)
+            .disabled(draftRange.validationError(today: today) != nil)
+            .accessibilityIdentifier("review.range.apply")
+    }
+    private func dismissRange() { showingRangePopover = false; showingRangeSheet = false }
     private var calendar: some View {
         let reviews = calendarDays.map { ReviewRules.day($0, in: state) }
         return VStack(alignment: .leading, spacing: 24) {
@@ -161,6 +212,15 @@ private struct ReviewContributionGrid: View {
                                         let day = days[week * 7 + weekday]
                                         let recorded = isMeal ? day.mealCount > 0 : day.workoutCount > 0
                                         RoundedRectangle(cornerRadius: 3).fill(recorded ? Color.primary : PixelTheme.surface)
+                                            .overlay {
+                                                if recorded {
+                                                    Image(systemName: isMeal ? "fork.knife" : "dumbbell.fill")
+                                                        .resizable().scaledToFit()
+                                                        .frame(width: cell * 2 / 3, height: cell * 2 / 3)
+                                                        .foregroundStyle(PixelTheme.canvas)
+                                                        .accessibilityHidden(true)
+                                                }
+                                            }
                                             .frame(width: cell, height: cell).opacity(day.day > today ? 0 : 1)
                                             .accessibilityElement(children: .ignore)
                                             .accessibilityLabel(day.day.description + "，" + title + (recorded ? "已记录" : "未记录"))

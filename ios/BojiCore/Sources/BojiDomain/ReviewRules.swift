@@ -66,8 +66,20 @@ public enum ReviewRules {
             targetKcal: profile?.targetKcal, goal: GoalRules.effective(on: day, stages: state.goals), missingReasons: missing)
     }
     public static func range(ending end: LocalDay, count: Int, in state: DatasetSnapshot) throws -> ReviewRange {
-        guard [7, 30].contains(count) else { throw DomainError.invalidValue("请选择 7 或 30 天") }
-        return ReviewRange(days: (0..<count).map { day(end.adding(days: $0 - count + 1), in: state) })
+        guard (1...90).contains(count) else { throw DomainError.invalidValue("日期区间须为 1 至 90 天") }
+        return try range(starting: end.adding(days: 1 - count), ending: end, in: state)
+    }
+    public static func rangeDayCount(starting start: LocalDay, ending end: LocalDay) throws -> Int {
+        guard start <= end else { throw DomainError.invalidValue("起始日期不能晚于终止日期。") }
+        var calendar = Calendar(identifier: .gregorian)
+        calendar.timeZone = TimeZone(secondsFromGMT: 0)!
+        let count = (calendar.dateComponents([.day], from: start.date(in: calendar.timeZone), to: end.date(in: calendar.timeZone)).day ?? 0) + 1
+        guard (1...90).contains(count) else { throw DomainError.invalidValue("日期区间最多 90 天，请缩短范围。") }
+        return count
+    }
+    public static func range(starting start: LocalDay, ending end: LocalDay, in state: DatasetSnapshot) throws -> ReviewRange {
+        let count = try rangeDayCount(starting: start, ending: end)
+        return ReviewRange(days: (0..<count).map { day(start.adding(days: $0), in: state) })
     }
 }
 

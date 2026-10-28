@@ -134,15 +134,22 @@ public actor ManagedStore {
         _ = try await restored.snapshot()
         let current = try files.read(path("active.json"))
         // Freeze old writers before replacing the pointer. Recovery is an explicit user action.
-        let oldRepository = repository
-        let recovery = try await oldRepository?.beginMaintenance()
-        do { try files.writeAtomically(previousBytes, to: path("active.json")) }
-        catch {
-            if let recovery { await oldRepository?.endMaintenance(leaseID: recovery.lease.id) }
+        let oldRepository = try await open()
+        let recovery = try await oldRepository.beginMaintenance()
+        do {
+            let localBackup = recovery.lease.value.backup
+            let previousBackup = try await restored.snapshot().backup
+            try await restored.updateBackup(expectedBookmark: previousBackup.directoryBookmark) {
+                $0 = localBackup; $0.dirty = true
+                if $0.directoryBookmark != nil { $0.status = .dirty }
+            }
+            try files.writeAtomically(previousBytes, to: path("active.json"))
+        } catch {
+            await oldRepository.endMaintenance(leaseID: recovery.lease.id)
             throw error
         }
         repository = restored
-        if let recovery { await oldRepository?.releaseSnapshot(recovery.lease.id) }
+        await oldRepository.releaseSnapshot(recovery.lease.id)
         // Once activation succeeded, failures in optional housekeeping do not undo recovery.
         try? files.writeAtomically(current, to: path("previous.json"))
         if exists("migration.json") { try? FileManager.default.removeItem(at: path("migration.json")) }

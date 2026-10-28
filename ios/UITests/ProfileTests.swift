@@ -12,7 +12,7 @@ import XCTest
         reveal(app.buttons["profile.activity"], in: app); app.buttons["profile.activity"].tap(); app.buttons["较少活动 · 1.2"].tap()
         reveal(app.buttons["profile.save"], in: app); app.buttons["profile.save"].tap()
         XCTAssertTrue(app.buttons["profile.link"].waitForExistence(timeout: 5))
-        XCTAssertEqual(app.buttons["profile.link"].value as? String, "查看与修改")
+        XCTAssertEqual(app.buttons["profile.link"].value as? String, "已填写")
         XCTAssertFalse(app.buttons["goal.link"].exists)
         app.terminate(); app.launch(); showMineRoot(in: app)
         app.buttons["profile.link"].tap()

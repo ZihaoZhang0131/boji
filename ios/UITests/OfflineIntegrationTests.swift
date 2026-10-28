@@ -27,9 +27,8 @@ import XCTest
         XCTAssertEqual(app.buttons.matching(NSPredicate(format: "identifier BEGINSWITH %@", "meal.row.")).count, 1)
 
         app.buttons["workout.new"].tap()
-        let name = app.textFields["workout.name"]
-        name.tap(); name.typeText("Offline integration workout")
-        reveal(app.buttons["workout.addExercise"], in: app); app.buttons["workout.addExercise"].tap(); app.buttons["引体向上"].tap()
+        XCTAssertFalse(app.textFields["workout.name"].exists)
+        app.buttons["引体向上"].tap()
         let reps = app.textFields["第 1 组次数"]
         reveal(reps, in: app); reps.tap(); reps.typeText("8")
         reveal(app.buttons["workout.save"], in: app); app.buttons["workout.save"].tap()
@@ -42,13 +41,14 @@ import XCTest
         XCTAssertEqual(app.buttons["profile.link"].value as? String, "查看与修改")
         app.tabBars.buttons["回顾"].tap()
         XCTAssertFalse(app.descendants(matching: .any)["review.empty"].firstMatch.exists)
+        app.tabBars.buttons["记录"].tap()
         let savedMeal = app.buttons.matching(NSPredicate(format: "identifier BEGINSWITH %@", "meal.row.")).firstMatch
         reveal(savedMeal, in: app); savedMeal.tap()
-        XCTAssertTrue(app.staticTexts["Offline integration meal"].waitForExistence(timeout: 5))
-        app.buttons["完成"].tap()
+        XCTAssertEqual(note.value as? String, "Offline integration meal")
+        app.buttons["meal.close"].tap()
         let savedWorkout = app.buttons.matching(NSPredicate(format: "identifier BEGINSWITH %@", "workout.row.")).firstMatch
         reveal(savedWorkout, in: app); savedWorkout.tap()
-        XCTAssertEqual(app.textFields["workout.name"].value as? String, "Offline integration workout")
+        XCTAssertEqual(app.textFields["第 1 组次数"].value as? String, "8")
         app.buttons["workout.close"].tap()
         let attachment = XCTAttachment(screenshot: app.screenshot())
         attachment.name = "forced-offline-restart-review"

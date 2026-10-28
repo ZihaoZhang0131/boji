@@ -48,6 +48,12 @@ public actor DirectoryBackup {
     private let afterSnapshot:@Sendable()async throws->Void
     private let uploadEvidence:@Sendable(URL)throws->UploadEvidence
     private var running=false
+    private var connecting=false
+    private var configurationChanges=0
+    private var choiceRevision=0
+    private var latestChoice:Bool?
+    private var suspended=false
+    private var idleWaiters:[CheckedContinuation<Void,Never>]=[]
     private var observedRevision:Int64?
     private var observedAt:Date?
     private var lastProbe:Date?
@@ -55,7 +61,11 @@ public actor DirectoryBackup {
         self.repository=repository;self.cache=cache;self.clock=clock;self.afterSnapshot=afterSnapshot;self.fault=fault;self.uploadEvidence=uploadEvidence
     }
     public func connect(_ directory:URL) async throws {
-        guard !running else { throw DomainError.conflict }
+        let choiceAtSelection=choiceRevision
+        while running || configurationChanges>0 { await withCheckedContinuation { idleWaiters.append($0) } }
+        guard !suspended else { throw DomainError.conflict }
+        try Task.checkCancellation()
+        running=true;connecting=true;defer { connecting=false;finishOperation() }
         let state=try await repository.snapshot();try ExportPolicy.requirePersonalDataset(state)
         let scoped=directory.startAccessingSecurityScopedResource();defer { if scoped { directory.stopAccessingSecurityScopedResource() } }
         let bookmark=try directory.bookmarkData(options:.minimalBookmark,includingResourceValuesForKeys:nil,relativeTo:nil)
@@ -65,8 +75,9 @@ public actor DirectoryBackup {
             return try self.readPointer(managed,datasetID:state.dataset.id)
         }
         let label=directory.lastPathComponent
+        let enabled=choiceAtSelection == choiceRevision ? true : (latestChoice ?? true)
         try await repository.updateBackup(expectedBookmark:state.backup.directoryBookmark) { backup in
-            backup=BackupState();backup.directoryBookmark=bookmark;backup.directoryLabel=label;backup.dirty=true;backup.status = .dirty
+            backup=BackupState();backup.automaticEnabled=enabled;backup.directoryBookmark=bookmark;backup.directoryLabel=label;backup.dirty=true;backup.status = .dirty
             backup.pointerSHA256=existing?.1
         }
         observedRevision=nil;lastProbe=nil
@@ -77,42 +88,86 @@ public actor DirectoryBackup {
         try await repository.updateBackup(expectedBookmark:state.backup.directoryBookmark) { $0=BackupState();$0.dirty=true }
         observedRevision=nil;lastProbe=nil
     }
+    public func setAutomaticEnabled(_ enabled:Bool) async throws {
+        guard !suspended else { throw DomainError.conflict }
+        choiceRevision += 1;latestChoice=enabled
+        configurationChanges += 1
+        defer { configurationChanges -= 1;wakeWaiters() }
+        // A Stop may interrupt publication, but must target the newly selected bookmark
+        // if a directory selection is currently being persisted.
+        while connecting { await withCheckedContinuation { idleWaiters.append($0) } }
+        let state=try await repository.snapshot()
+        guard state.backup.directoryBookmark != nil else { throw DirectoryBackupError.authorization }
+        try await repository.updateBackup(expectedBookmark:state.backup.directoryBookmark) {
+            $0.automaticEnabled=enabled
+            if enabled { $0.retryCount=0;$0.nextRetryAt=nil }
+        }
+        if enabled { observedRevision=nil }
+    }
+    /// Prevent new operations, then drain the current publication before replacing its repository.
+    public func suspendAndWait() async {
+        suspended=true
+        while running || configurationChanges>0 { await withCheckedContinuation { idleWaiters.append($0) } }
+    }
+    public func unsuspend() { suspended=false }
+    private func finishOperation() {
+        running=false
+        wakeWaiters()
+    }
+    private func wakeWaiters() {
+        let waiters=idleWaiters;idleWaiters=[]
+        for waiter in waiters { waiter.resume() }
+    }
     public func resume() async throws {
         let state=try await repository.snapshot()
-        guard state.backup.directoryBookmark != nil else { return }
+        guard !suspended,state.backup.directoryBookmark != nil,state.backup.automaticEnabled == true else { return }
         try await repository.updateBackup(expectedBookmark:state.backup.directoryBookmark) { $0.retryCount=0;$0.nextRetryAt=nil }
         observedRevision=nil
     }
-    public func run(immediate:Bool=false) async {
-        guard !running else { return };running=true;defer { running=false }
+    public func run(immediate:Bool=false,automaticOnly:Bool=false) async {
+        while running || configurationChanges>0 {
+            guard immediate else { return }
+            await withCheckedContinuation { idleWaiters.append($0) }
+        }
+        guard !suspended,!Task.isCancelled else { return }
+        running=true;defer { finishOperation() }
         var bookmark:Data?
         do {
             var state=try await repository.snapshot();try ExportPolicy.requirePersonalDataset(state)
             guard let token=state.backup.directoryBookmark else { return };bookmark=token
+            if automaticOnly,state.backup.automaticEnabled != true { return }
+            // Stopped backups can still report the last package's system status, but never publish.
+            let statusOnly = !immediate && state.backup.automaticEnabled != true
+            if statusOnly, state.backup.automaticEnabled == nil || state.backup.lastWrittenAt == nil { return }
             if !immediate,let retry=state.backup.nextRetryAt,retry>clock.now { return }
             if !immediate,(state.backup.retryCount ?? 0)>=3 { return }
-            if !immediate,state.backup.dirty {
+            if !immediate,!statusOnly,state.backup.dirty {
                 if observedRevision != state.dataset.revision { observedRevision=state.dataset.revision;observedAt=clock.now;return }
                 if let observedAt,clock.now.timeIntervalSince(observedAt)<6 { return }
             }
-            if !immediate,!state.backup.dirty,let lastProbe,clock.now.timeIntervalSince(lastProbe)<30 { return }
+            if statusOnly || !state.backup.dirty,let lastProbe,clock.now.timeIntervalSince(lastProbe)<30 { return }
+            try Task.checkCancellation()
             let directory=try resolve(token),scoped=directory.startAccessingSecurityScopedResource()
             defer { if scoped { directory.stopAccessingSecurityScopedResource() } }
-            let managed=try coordinated(directory,write:true) { try self.managedDirectory($0,datasetID:state.dataset.id) }
+            let publishing = state.backup.dirty && !statusOnly
+            let managed=try coordinated(directory,write:publishing) {
+                try self.managedDirectory($0,datasetID:state.dataset.id,create:publishing)
+            }
             let observed=try coordinated(managed,write:false) { try self.readPointer($0,datasetID:state.dataset.id) }
             if observed?.1 != state.backup.pointerSHA256 {
                 guard let observed,observed.0.exportID==state.backup.activeExportID,observed.1==state.backup.activePointerSHA256 else { throw DirectoryBackupError.conflict }
                 try await recordPublished(observed.0,digest:observed.1,bookmark:token)
                 state=try await repository.snapshot()
             }
-            if !state.backup.dirty {
-                if immediate || lastProbe.map({clock.now.timeIntervalSince($0)>=30}) ?? true { try await probe(managed,bookmark:token);lastProbe=clock.now }
+            if statusOnly || !state.backup.dirty {
+                lastProbe=clock.now
+                try await probe(managed,bookmark:token)
                 return
             }
             try await repository.updateBackup(expectedBookmark:token) { $0.status = .writing;$0.lastError=nil }
             let published=try await PackageExporter().export(repository:repository,to:cache,at:clock.now)
             defer { try? FileManager.default.removeItem(at:published.url) }
-            try await afterSnapshot();try fault(.afterSnapshot)
+            try await afterSnapshot();try Task.checkCancellation();try fault(.afterSnapshot)
             let pointer=BackupPointer(published),bytes=try PackageCodec.encode(pointer),digest=PackageHash.sha256(bytes)
             try await repository.updateBackup(expectedBookmark:token) { $0.activeExportID=pointer.exportID;$0.activePointerSHA256=digest }
             let expected=state.backup.pointerSHA256
@@ -131,16 +186,23 @@ public actor DirectoryBackup {
                 _ = try PackageReader().read(partial)
                 try FileManager.default.moveItem(at:partial,to:final)
                 try self.fault(.beforePointer)
+                try Task.checkCancellation()
                 guard try self.pointerDigest(folder)==expected else { throw DirectoryBackupError.conflict }
                 try writer.writeAtomically(bytes,to:folder.appendingPathComponent("latest.json"));try self.fault(.afterPointer)
             }
             try await recordPublished(pointer,digest:digest,bookmark:token)
-            try await probe(managed,bookmark:token);lastProbe=clock.now
+            lastProbe=clock.now;try await probe(managed,bookmark:token)
+        } catch is CancellationError {
+            guard let bookmark else { return }
+            try? await repository.updateBackup(expectedBookmark:bookmark) {
+                if $0.status == .writing { $0.status = $0.dirty ? .dirty : ($0.lastUploadStatus ?? .unknown) }
+            }
         } catch {
             guard let bookmark else { return }
             let now=clock.now,message=error.localizedDescription
             try? await repository.updateBackup(expectedBookmark:bookmark) {
-                $0.dirty=true;$0.status = .failed;$0.lastError=message
+                $0.status = .failed;$0.lastError=message
+                if !$0.dirty { $0.lastUploadStatus = .unknown }
                 let count=min(($0.retryCount ?? 0)+1,3);$0.retryCount=count;$0.nextRetryAt=now.addingTimeInterval([15.0,60.0,300.0][count-1])
             }
         }
@@ -156,7 +218,10 @@ public actor DirectoryBackup {
             let urls=[location.appendingPathComponent("latest.json"),root.appendingPathComponent("manifest.json")]+package.manifest.files.map{root.appendingPathComponent($0.path)}
             return BackupUploadRules.status(urls.map { (try? self.uploadEvidence($0)) ?? UploadEvidence(ubiquitous:nil,uploaded:nil,uploading:nil) })
         }
-        try await repository.updateBackup(expectedBookmark:bookmark) { if !$0.dirty { $0.status=status } }
+        try await repository.updateBackup(expectedBookmark:bookmark) {
+            $0.lastUploadStatus=status
+            if !$0.dirty { $0.status=status;$0.lastError=nil;$0.retryCount=0;$0.nextRetryAt=nil }
+        }
     }
     public static func systemUploadEvidence(_ url:URL) throws -> UploadEvidence {
         let value=try url.resourceValues(forKeys:[.isUbiquitousItemKey,.ubiquitousItemIsUploadedKey,.ubiquitousItemIsUploadingKey])
@@ -164,13 +229,18 @@ public actor DirectoryBackup {
     }
     private func resolve(_ bookmark:Data) throws -> URL {
         var stale=false
-        let url=try URL(resolvingBookmarkData:bookmark,options:[.withoutUI,.withoutMounting],relativeTo:nil,bookmarkDataIsStale:&stale)
+        let url:URL
+        do { url=try URL(resolvingBookmarkData:bookmark,options:[.withoutUI,.withoutMounting],relativeTo:nil,bookmarkDataIsStale:&stale) }
+        catch { throw DirectoryBackupError.authorization }
         guard !stale else { throw DirectoryBackupError.authorization };return url
     }
     private struct Owner:Codable,Equatable { let app:String;let datasetID:UUID }
-    private func managedDirectory(_ root:URL,datasetID:UUID) throws -> URL {
+    private func managedDirectory(_ root:URL,datasetID:UUID,create:Bool=true) throws -> URL {
         func directory(_ url:URL) throws {
-            if !FileManager.default.fileExists(atPath:url.path) { try FileManager.default.createDirectory(at:url,withIntermediateDirectories:false) }
+            if !FileManager.default.fileExists(atPath:url.path) {
+                guard create else { throw DirectoryBackupError.authorization }
+                try FileManager.default.createDirectory(at:url,withIntermediateDirectories:false)
+            }
             let values=try url.resourceValues(forKeys:[.isDirectoryKey,.isSymbolicLinkKey])
             guard values.isDirectory==true,values.isSymbolicLink != true else { throw DirectoryBackupError.unknownDirectory }
         }
@@ -182,6 +252,7 @@ public actor DirectoryBackup {
         if FileManager.default.fileExists(atPath:file.path) {
             guard try PackageCodec.decode(Owner.self,from:PackageFiles(root:managed).read("owner.json",maxBytes:4096))==owner else { throw DirectoryBackupError.unknownDirectory }
         } else {
+            guard create else { throw DirectoryBackupError.authorization }
             guard try FileManager.default.contentsOfDirectory(atPath:managed.path).isEmpty else { throw DirectoryBackupError.unknownDirectory }
             try LocalFileAccess().writeAtomically(PackageCodec.encode(owner),to:file)
         }

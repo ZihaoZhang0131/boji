@@ -309,7 +309,11 @@ public actor PackageImporter {
             guard data.count == imported.byteCount, PackageHash.sha256(data) == imported.sha256 else { throw PackageError.incomplete(imported.relativePath) };return data
         },transform:{ value in
             guard value.dataset.id == plan.baseDatasetID, value.dataset.revision == plan.baseRevision else { throw DomainError.conflict }
+            // Preview can outlive a user's Stop / directory change. These operational
+            // settings do not increment the content revision and must be read at activation.
+            let localBackup = value.backup
             value = plan.result
+            value.backup = localBackup
         })
     }
 }

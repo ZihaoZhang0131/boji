@@ -6,7 +6,7 @@ const {chromium}=require('playwright-core');
  const workout=async p=>{await p.click('[data-view-workout="w1009"]');await p.fill('#workout-duration','45')};
  for(const scene of ['today','meal','workout','calendar','review','profile','library','failed','loading','dark','empty','offline']){
   const c=await b.newContext({viewport:{width:1440,height:1020},reducedMotion:'reduce'}),p=await c.newPage();
-  await p.goto(`${base}/?v=0.6`);await p.evaluate(()=>document.fonts.ready);
+  await p.clock.setFixedTime(new Date('2026-10-09T12:00:00Z'));await p.goto(`${base}/?v=0.6`);await p.evaluate(()=>document.fonts.ready);
   if(['today','workout','library'].includes(scene)){await profile(p);await workout(p);if(scene!=='workout')await p.click('#save-workout')}
   if(scene==='meal'){await p.click('[data-ai-demo="ready"]');await p.locator('#adjust-energy').waitFor()}
   if(scene==='failed'){await p.click('[data-ai-demo="failed"]');await p.locator('#meal-energy').getByText('估算失败').waitFor()}

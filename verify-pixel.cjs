@@ -1,3 +1,4 @@
+const { selectReviewRange } = require('./review-test-helpers.cjs');
 const {chromium}=require('playwright-core');
 const assert=require('node:assert/strict');
 (async()=>{
@@ -7,7 +8,7 @@ const assert=require('node:assert/strict');
  for(const width of [393,320]){
   const context=await browser.newContext({viewport:{width,height:852},reducedMotion:'reduce'});
   const p=await context.newPage();p.on('pageerror',e=>errors.push(e.message));
-  await p.goto(`${base}/?v=0.6`);await p.evaluate(()=>document.fonts.ready);
+  await p.clock.setFixedTime(new Date('2026-10-09T12:00:00Z'));await p.goto(`${base}/?v=0.6`);await p.evaluate(()=>document.fonts.ready);
   const fonts=await p.evaluate(()=>({loaded:document.fonts.check('12px "Fusion Pixel"','薄记饮食训练0123456789'),families:['h2','.home-record','.home-value','.primary'].map(s=>getComputedStyle(document.querySelector(s)).fontFamily)}));
   assert(fonts.families.every(f=>f.includes('apple-system')));
   assert.equal(await p.locator('.food-img.pixel-art').count(),0);
@@ -37,18 +38,18 @@ const assert=require('node:assert/strict');
   await p.click('[data-review-mode="热量"]');assert(await fits());await monochrome();
   assert.equal(await p.locator('[data-day-count="7"]').count(),2);
   await p.screenshot({path:`pixel-review-${width}.png`});
-  await p.click('[data-energy-range="30"]');assert.equal(await p.locator('[data-day-count="30"]').count(),2);assert(await fits());await monochrome();await p.screenshot({path:`pixel-month-${width}.png`});
+  await selectReviewRange(p,'2026-09-10','2026-10-09');assert.equal(await p.locator('[data-day-count="30"]').count(),2);assert(await fits());await monochrome();await p.screenshot({path:`pixel-month-${width}.png`});
   await p.click('[data-tab="library"]');
   assert.equal(await p.locator('.mine-row').count(),3);assert.equal(await p.locator('.mine-icon').count(),0);
   assert(await fits());await monochrome();await p.screenshot({path:`pixel-mine-${width}.png`});await p.click('[data-profile]');await p.click('#profile-example');await p.click('#save-profile');
   await p.click('[data-tab="today"]');await p.evaluate(()=>{openMeal();runDemoRecognition()});await p.locator('#adjust-energy').waitFor();
   await p.evaluate(()=>{clearTimeout(toastTimer);document.querySelector('#toast').classList.remove('show')});assert(await fits());await monochrome();await p.screenshot({path:`pixel-meal-${width}.png`});
-  await p.click('#close-sheet');await p.click('[data-view-workout="w1009"]');await p.fill('#workout-duration','45');
+  await p.keyboard.press('Escape');await p.click('[data-view-workout="w1009"]');
   assert(await fits());await monochrome();assert.equal(await p.locator('[data-done],.workout-progress').count(),0);await p.screenshot({path:`pixel-workout-${width}.png`});
-  await p.click('#close-sheet');await p.click('[data-new-meal]');await p.setInputFiles('#photo-file','assets/breakfast.jpg');await p.locator('.photo-thumb img').waitFor();
+  await p.keyboard.press('Escape');await p.click('[data-new-meal]');await p.setInputFiles('#photo-file','assets/breakfast.jpg');await p.locator('.photo-thumb img').waitFor();
   assert(!(await p.locator('.photo-thumb img').getAttribute('class')||'').includes('pixel-art'));
   assert((await p.locator('.photo-thumb img').getAttribute('src')).startsWith('data:image/'));
-  await p.click('#close-sheet');await p.click('[data-tab="library"]');
+  await p.keyboard.press('Escape');await p.click('[data-tab="library"]');
   await p.evaluate(()=>{document.querySelector('#phone').classList.add('dark');clearTimeout(toastTimer);document.querySelector('#toast').classList.remove('show')});
   await monochrome();await p.screenshot({path:`minimal-mine-dark-${width}.png`});
   await p.click('[data-tab="review"]');await p.click('[data-review-mode="日历"]');

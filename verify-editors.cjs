@@ -7,13 +7,14 @@ const fs=require('node:fs');
  fs.mkdirSync('editor-screenshots',{recursive:true});
  for(const width of [393,320])for(const dark of [false,true]){
   const context=await browser.newContext({viewport:{width,height:852},reducedMotion:'reduce'}),p=await context.newPage();p.on('pageerror',e=>errors.push(e.message));
-  await p.goto(base);if(dark)await p.evaluate(()=>document.querySelector('#phone').classList.add('dark'));
+  await p.clock.setFixedTime(new Date('2026-10-09T12:00:00Z'));await p.goto(base);if(dark)await p.evaluate(()=>document.querySelector('#phone').classList.add('dark'));
   const shot=async name=>{
    await p.evaluate(()=>{clearTimeout(toastTimer);document.querySelector('#toast').classList.remove('show');document.activeElement.blur()});
    assert(await p.evaluate(()=>{const body=document.querySelector('.sheet-body');return body.scrollWidth<=body.clientWidth&&document.documentElement.scrollWidth<=innerWidth}));
+   const training=await p.locator('.workout-editor').count();
    const editingMeal=await p.locator('.meal-editor.is-editing').count();
-   assert.equal(await p.locator('#close-sheet').innerText(),editingMeal?'返回':'放弃');
-   assert.deepEqual(await p.locator('.sheet-foot button').allTextContents(),editingMeal?['保存','删除','返回']:['保存']);
+   if(!training)assert.equal(await p.locator('#close-sheet').innerText(),editingMeal?'返回':'放弃');
+   assert.deepEqual(await p.locator('.sheet-foot button').allTextContents(),training?['放弃','保存']:editingMeal?['保存','删除','返回']:['保存']);
    if(editingMeal){
     assert.equal(await p.locator('.sheet-head button').count(),0);
     const rects=await p.locator('.sheet-foot button').evaluateAll(es=>es.map(e=>{const r=e.getBoundingClientRect();return {y:r.y,w:r.width,h:r.height}}));
@@ -41,11 +42,11 @@ const fs=require('node:fs');
   await p.evaluate(()=>persist=window.realPersist);await p.click('#delete-meal');await p.click('#undo-delete');
   assert.equal(await p.evaluate(id=>JSON.stringify(state.meals.find(m=>m.id===id)),mealId),original);
 
-  await p.click('[data-new-workout]');await p.fill('#workout-name','上肢训练');await p.click('#add-exercise');await p.click('[data-exercise="杠铃卧推"]');
-  await p.fill('[data-set="0,0,weight"]','50');await p.fill('[data-set="0,0,reps"]','8');await p.click('[data-add-set="0"]');await p.click('[data-add-set="0"]');await p.fill('#workout-duration','45');
+  await p.click('[data-new-workout]');await p.click('[data-exercise="杠铃卧推"]');
+  await p.fill('[data-set="0,0,weight"]','50');await p.fill('[data-set="0,0,reps"]','8');await p.click('[data-add-set="0"]');await p.click('[data-add-set="0"]');
   await shot('new-workout');await p.click('#save-workout');const workoutId=await p.evaluate(()=>state.workouts.at(-1).id);
   await p.click(`[data-view-workout="${workoutId}"]`);await shot('edit-workout');
-  await p.fill('#workout-duration','50');await p.click('#close-sheet');assert.equal(await p.evaluate(id=>state.workouts.find(w=>w.id===id).duration,workoutId),45);
+  await p.fill('[data-set="0,0,reps"]','50');await p.click('#discard-workout');assert.equal(await p.evaluate(id=>state.workouts.find(w=>w.id===id).exercises[0].sets[0].reps,workoutId),8);
   await p.click('[data-view-workout="w1009"]');await p.evaluate(()=>document.querySelector('.record-editor').style.fontSize='24px');
   assert(await p.evaluate(()=>document.querySelector('.sheet-body').scrollWidth<=document.querySelector('.sheet-body').clientWidth));
   await context.close();

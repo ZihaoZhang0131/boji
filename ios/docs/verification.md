@@ -1,5 +1,19 @@
 # 原生验证记录
 
+## 2026-10-25 训练动作卡片与自动粗估
+
+网页与原生「记训练／编辑训练」采用浅灰动作卡片、白色输入区、组数加减和底部放弃／保存；添加动作在当前页展开。移除名称、时间、时长、强度和热量预览输入。新记录自动记录首页日期及当前当地时间。自动估算 `sets-met-net-v1` 保留参数和体重来源，旧记录原样保存不重算。
+
+验证：
+
+- `BASE_URL=http://127.0.0.1:8766 npm test` 的七组网页回归通过，包括新增 `verify-workout.cjs`。覆盖 320／393px、明暗外观、大字号、44px 操作区、DOM 与输入保留、同页选择、保存失败、重启、旧快照和未知热量；浏览器控制台无错误。日志 `/tmp/boji-workout-web-final.log`；单位标题微调后补跑表单回归 `/tmp/boji-workout-editors-final.log`。
+- `swift test --package-path ios/BojiCore`：75 项通过。新增分段能耗、真实零值、缺体重、支持范围、旧快照保留、导出往返、参数篡改拒绝及网页小数时长导入验证，日志 `/tmp/boji-workout-core-final.log`。
+- iPhone SE / iOS 26.5：4 项 `WorkoutEditorTests` 通过。UI 覆盖同页加动作、组数加减、保存重启、修改放弃、复制、删除恢复，以及最大辅助字号下的布局与底部按钮。浅色日志 `/tmp/boji-workout-ui-final.log`，深色日志 `/tmp/boji-workout-dark-final.log`，最终深色卡片、加减图标与 44pt 操作区校验 `/tmp/boji-workout-layout-final.log`；最终模型回归 `/tmp/boji-workout-app-final.log`。测试完成后模拟器已恢复浅色。
+- 网页实际截图：[训练录入](../../editor-screenshots/new-workout-393.png)；原生实际截图：[深色训练卡片](screenshots/workout-simple-dark.png)。截图为隔离测试资料。
+
+本轮没有安装到真实 iPhone；模拟器的键盘、字号和界面验证不等同于真机 VoiceOver 或实体键盘专项验收。
+
+
 本文件只记录实际运行结果，不以模拟服务替代真实模型、iCloud 或真机验收。
 
 ## 2026-10-21 我的功能网格
@@ -326,3 +340,54 @@ iPhone SE 模拟器编译通过，3 项 MealEditorTests 与 6 项相关 UI 用�
 - iPhone SE / iOS 26.5 模拟器构建通过，4 项 `MealEditorTests` 与 5 个不同 UI 用例分轮通过。覆盖热量修改、保存更新同一记录、返回放弃、未保存修改后删除、失败重试、原照片保留、回收站恢复、重启和最大辅助字号。首轮多图测试将部分可见的热量行判为可点击，误点固定删除按钮；改为先滚动到操作栏上方完整可见，再等待热量表单，定向复测通过。
 - 最终模型重新编译并复跑 4 项单元测试，多图 UI 复测也通过。结果包为 `/tmp/boji-direct-editor-tests.xcresult` 和 `/tmp/boji-direct-editor-final-model.xcresult`；后者是最终模型与多图复测结果，前者其余 4 个 UI 用例通过。
 - 已查看网页 `editor-screenshots/direct-meal-393.png`、`direct-meal-320-dark.png`，及原生 `screenshots/ui-direct-meal-editor.png`、`ui-direct-meal-editor-largest.png`、`ui-direct-meal-editor-photos.png`。未安装到真实 iPhone，未调用真实 AI；数据结构、估算规则与历史格式未变。
+
+### 趋势日期区间选择器（2026-10-25）
+
+网页与原生趋势改为起止日期面板，默认截至设备当地今天的近 7 天，支持包含首尾的 1—90 天。确认后才更新两图，取消保留原范围；日历仍独立翻页。网页移除固定示例时钟，历史示例日期不平移。日期状态不写入记录或导出格式。
+
+验证完成：`BASE_URL=http://127.0.0.1:8766 npm test` 七组网页回归通过，无页面错误；日期专项另覆盖单日、2／6／8／90 天、91 天拒绝、空日期、未来日期、倒置区间、取消／外部关闭／Escape、焦点恢复、真实本地日期、上海／洛杉矶时区、跨日、历史首页入口和刷新重置。320／393px 浅深色截图位于 `review-screenshots/range-panel-*.png` 及 `trend-1-*`、`trend-90-*`。
+
+`swift test --package-path ios/BojiCore`：76 项通过；原生 `ReviewPresentationTests`：7 项通过，覆盖 1／2／7／30／90 天与小屏、浅深色、大字号图表。iPhone SE / iOS 26.5 模拟器验证首页入口、空状态、保存及重启、实际起止日期选择、取消与确定、单日、浏览位置、辅助字号。截图复查发现并修复了紧凑日期控件的大字号横向溢出、确认／取消按钮触控高度和深色确认按钮文字对比度。日期值沿用系统完整读屏内容；可视日期字号上限 XXXL，其他文本继续随辅助字号缩放。
+
+最终深色模拟器复测 `ReviewAITests.testReviewDateEditingCommitsOnlyOnConfirm` 与 `testReviewLargestText` 均通过（85.493 秒），结果：`.build/DerivedData/Logs/Test/Test-Boji-2026.10.25_14-45-51-+0800.xcresult`。原生截图：`docs/screenshots/review-range-compact.png`、`review-range-single-day.png`、`review-range-largest.png`、`review-range-largest-dark.png`。模拟器外观已恢复为测试前的浅色。
+
+
+### 2026-10-25：趋势图一体化排版
+
+网页与原生的标题／单位紧凑成组，纵轴右对齐并绑定三条水平参考线，横轴短刻度与逐日数据共用坐标，两图按最宽数值共用纵轴占位。沿用独立纵轴、缺失断线、真实零值、待估算标题及已确认日期区间。原生大字号保留首尾日期；文字实际宽度不足时分行，不缩小文字。
+
+- 网页回顾回归通过：320／393px、浅深色，覆盖单日、7／30／90 天、跨年、缺失、零值、空状态及合法多餐合计 123456 的六位数刻度；直接测量 DOM 验证纵轴文字中心／参考线、横轴标签／短刻度／数据点、两图绘图区边界一致，且日期无重叠或裁切。日期确认／取消、页面保留、首页重置、跨日和持久化不变回归通过。其余网页记录、热量、样式、首页、编辑器及训练回归全部通过。
+- 原生 `swift test` 的 76 项核心测试通过。`ReviewPresentationTests` 9 项通过，渲染覆盖 320／393pt、浅深色、Large／XXXL／最大辅助字号及长数值／空状态。最终渲染结果：`/tmp/boji-chart-layout-delivery.xcresult`。
+- 模拟器的回顾空状态、日期确认／取消、保存／重启、最大辅助字号四项 UI 场景通过；布局调整后的保存／读屏标签与最大字号复测通过，结果在 `/tmp/boji-chart-layout-tests.xcresult` 与 `/tmp/boji-chart-layout-verified.xcresult`。
+- 已目视检查同一跨年数据的修改前后截图，以及单日、长区间、六位数、空状态和最大辅助字号的最终截图。网页截图位于 `review-screenshots/`；原生代表截图为 `screenshots/review-charts-unified-*.png`。这些均为固定测试数据，非用户真实记录。本次未执行真机回归。
+
+## 2026-10-25 我的与设置子页简洁化
+
+- 网页 `mine.js` / `mine.css` 和原生 `MineComponents.swift` 将「我的」、资料、AI 与数据管理统一为纯色单列、细分隔线和紧凑分组。首页状态取当前有效资料及既有授权数据；网页 AI 始终标明演示，不增加同步或备份状态。
+- 资料保留校验、有效日期与回溯确认；单位贴近输入，目标单独分组，说明和历史折叠。原生普通字号字段行收紧，辅助字号上下排列，输入提示提高对比度。保存与错误提示固定在底部。
+- 原生导出按生成／存储阶段突出操作，导入结果与错误紧邻对应操作，恢复旧版本独立折叠。回收站保留删除日期、恢复、永久删除确认和 30 天保留规则。网页导出错误重试及资料格式保持不变。
+- 新密钥已撤回旧授权、随后政策请求失败时，补充刷新内存快照，防止首页显示过期授权。测试使用临时目录、内存凭据和模拟政策服务，没有读取真实 Keychain 或发送模型请求。
+- 网页全量 `BASE_URL=http://127.0.0.1:8766 npm test` 通过；`verify-mine.cjs` 覆盖按今天判定状态、历史日期隔离、保存／取消、开关即时持久化、导出失败重试、嵌套返回焦点、键盘循环、错误提示位置，及 320／393 px 浅深色和 200% 重排。日志 `/tmp/boji-mine-full-web.log`、`/tmp/boji-mine-final-web.log`。
+- 核心 76 项、应用单元测试 33 项通过。应用结果 `/tmp/boji-mine-final.xcresult` 的 BojiTests 部分；最终设置专项与截图见 `/tmp/boji-mine-verified.xcresult`。AI 多状态和最大字号回收站截图使用真实 UIHostingController 布局；直接 ImageRenderer 不能绘制 ScrollView 和系统输入控件，不能使用其空白结果作视觉验收。
+- 原生相关 UI 基线 8 项通过，结果 `/tmp/boji-mine-ui.xcresult`。之后的资料紧凑排版与保存通过 `/tmp/boji-mine-delivery.xcresult` 的 ProfileTests；回收站计数、永久删除取消、恢复及记录／回顾闭环通过 `/tmp/boji-mine-final.xcresult` 的 LaunchTests。最大字号恢复确认浮层缺少可用取消路径，现改为带取消的系统 alert，并在最终 MineSettingsTests 复测。
+- 浏览器截图位于 `mine-screenshots/`；原生首页与子页为 `screenshots/mine-*`。自动化检查了入口状态、辅助功能标签及主要控件至少 44 pt，小屏和最大辅助字号截图经人工查看。本轮没有真机安装或 VoiceOver 实际朗读，云端文件提供者上传状态也未据模拟器结果推断。
+- 最终页面截图在导航动画结束后重新采集，`/tmp/boji-mine-screens.xcresult` 的普通与最大辅助字号 2 项 UI 测试通过；`screenshots/mine-profile-small.png`、`mine-profile-largest.png`、`mine-home-small.png` 等已更新为稳定画面。
+
+## 2026-10-25 接回 iCloud 自动备份
+
+已在现有未提交 UI 改动上增量接回「我的 → 数据管理 → iCloud 备份」。旧授权明确启用，停止保留目录和历史；自动运行独立于 AI，仅在前台检查，导入/恢复先排空旧发布，再使用切换当下的本机配置。最近完整写入时间与系统上传证据分开显示，资料包版本不变。
+
+- 核心 `swift test`：83 项通过，日志 `/tmp/boji-backup-core.log`。包含三次重试与退避、取消、串行发布、已停止手动备份、完整包全部文件状态及 30 秒节流。
+- 应用首次全量单元测试：37 项通过，`/tmp/boji-backup-app.xcresult`。新增的备份状态截图使用隔离资料与明确的模拟证据；不代表真实云端上传。
+- 网页八组全量回归通过，`BASE_URL=http://127.0.0.1:8766 npm test`，日志 `/tmp/boji-backup-web.log`；覆盖 320／393px 浅深色、键盘和焦点、记录与回顾。
+- 第一轮 UI 中记录编辑/回收站与设置导航通过；两个备份选择器取消测试仅按 Button 类型查找控件失败。后续定位和复测结果另记，不将这轮视为全部 UI 通过。
+- 用户明确选择稍后真机验收；当前连接的 iPhone 不可用。本轮没有向真实 iCloud 测试目录发布，没有验证 Mac 下载，也没有声称执行真机 VoiceOver。
+
+最终复测：
+
+- `/tmp/boji-backup-delivery.xcresult` 全部通过：应用单元 38 项、备份专项 UI 2 项。包含首次选择、停止后手动备份、错误提示保留及导入/恢复后的本机设置保留。
+- 文件提供者的取消占位元素虽可出现在读屏树中，但不一定可点击，且打开时有异步空白加载阶段。专项 UI 等待系统控制器就绪后，通过系统面板下拉关闭验证放弃选择，再检查返回、重启仍未设置；普通字号与最大辅助字号均通过。
+- 其他已通过 UI：`/tmp/boji-backup-ui.xcresult` 中记录编辑/回收站、我的导航、设置普通/最大字号 4 项；`/tmp/boji-backup-verified.xcresult` 中演示隔离和回顾日期编辑/重启 3 项。两次中间结果包包含已修复的选择器测试失败，不能把整个中间包标为通过。
+- 最后核心回归 83 项通过；追加确认停止后的状态核对不会重建已移除的目录，选择器返回与在途发布相遇不会丢失目录选择，较晚的停止操作优先于首次自动发布。
+- `docs/screenshots/backup-*` 是六种代表状态的 320/393pt 浅深色和最大字号夹具；`mine-backup-unconfigured-*`、`mine-backup-actions-*` 是模拟器中的实际页面。共归档 22 张备份截图，并更新数据管理截图。已检查文字、操作区、错误就近呈现及滚动后的可达性。
+- `git diff --check` 通过。未提交、推送或安装到真实 iPhone；既有未提交改动保留。真实 iCloud / Mac 和真机 VoiceOver 边界不变。
